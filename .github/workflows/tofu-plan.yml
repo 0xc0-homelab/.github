@@ -35,9 +35,18 @@ jobs:
     permissions:
       contents: read
       pull-requests: write
+    # One plan at a time per PR and root. A newer push replaces a plan that has
+    # not started yet. A running plan is never cancelled: killing tofu mid-run
+    # can leave the state lock behind.
+    concurrency:
+      group: tofu-plan-${{ github.repository }}-${{ github.event.pull_request.number || github.ref }}-${{ inputs.working-directory }}
+      cancel-in-progress: false
     env:
       TF_IN_AUTOMATION: "true"
       TF_INPUT: "false"
+      # Wait for the state lock instead of failing: an apply or another PR's
+      # plan may hold it for a moment.
+      TF_CLI_ARGS_plan: "-lock-timeout=5m"
       TF_VAR_github_app_id: ${{ secrets.GH_APP_ID }}
       TF_VAR_github_app_installation_id: ${{ secrets.GH_APP_INSTALLATION_ID }}
       TF_VAR_github_app_private_key: ${{ secrets.GH_APP_PRIVATE_KEY }}

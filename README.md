@@ -76,6 +76,24 @@ cannot come from CI. The order matters:
 4. **Second apply, rulesets active.** `scripts/tofu prod apply`
    From here on, every change goes through a PR and `org-apply`.
 
+## Concurrency
+
+Several PRs can plan, and several merges can apply, against the same state.
+
+- **Plans**: one at a time per PR and root. A newer push replaces a plan that
+  has not started; a running plan is never cancelled, because killing tofu
+  mid-run can leave the lock behind.
+- **Applies**: queued per root, oldest first, never cancelled once running. If
+  a third merge arrives while one apply runs and another waits, the waiting one
+  is dropped — `main` is linear, so the newest commit already contains it.
+- **Every apply re-plans** against the live state. The plan posted on a PR is
+  for review; it is never what gets applied.
+- **Locks are waited for**, not failed on: 5 minutes for plans and local runs,
+  10 for CI applies.
+- **Stale PR plans** — PR B planned before PR A merged — are stopped by the
+  ruleset requiring branches to be up to date. That only applies once the plan
+  check is required.
+
 ## State
 
 RustFS at `https://s3.0xc0.cc`, bucket `tfstate`, locked with a lockfile.
