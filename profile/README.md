@@ -21,6 +21,9 @@ infrastructure state, and the backup server, which ships to off-site storage.
 - **Between zones**, everything not explicitly allowed is denied. The allowed
   flows live in one normative matrix, and the firewall is generated from it.
 
+The full picture, with diagrams, is in the
+[architecture document](https://github.com/0xc0-homelab/infrastructure/blob/main/docs/architecture.md).
+
 ## How it is built
 
 Packer builds the images, OpenTofu creates the VMs, the network and the
