@@ -14,14 +14,16 @@ into the workspace repo at exactly the path GitHub reads.
 
 - `modules/repository/` — the only way a repo is created. Squash-only, the
   default-branch ruleset and secret scanning are baked in there.
-- `org/` — the root. Calls the module once per repo and owns the `production`
-  environment every apply waits on.
+- `environments/prod/` — the root. Calls the module once per repo and owns the
+  `production` Actions environment every apply waits on. State key
+  `homelab/.github/prod.tfstate`.
 - `.github/workflows/` — `tofu-plan` and `tofu-apply` are reusable and called
   by the other repos; `org-plan` and `org-apply` run them for this repo.
 - Organization templates (issue templates, PR template, CODEOWNERS), later.
 
-The bootstrap order is in `README.md`. Do not improvise it: the first apply
-runs with `-var bootstrap=true`, or `main` cannot take its first push.
+Layout and naming conventions are in `README.md`, section Conventions. The
+bootstrap order is there too. Do not improvise it: the first apply runs with
+`-var bootstrap=true`, or `main` cannot take its first push.
 
 ## Outside Terraform, deliberately
 
@@ -51,12 +53,13 @@ readable by anyone. No secret value ever goes in here — only references.
   others.
 - Never run `tofu apply` or `destroy`. Here least of all.
 - Never keep a saved plan file: it contains the App private key in plaintext.
-- OpenTofu is always written as modules. The root only calls modules; a
-  resource in `org/` is there only when it belongs to no reusable concept.
+- OpenTofu is always written as modules, laid out as `modules/<name>/` and
+  `environments/<env>/`. A root only calls modules; a resource sits in a root
+  only when it belongs to no reusable concept.
 
 ## Before opening a PR
 
-Run `scripts/tofu plan` and read it line by line. A repo or a permission that exists on
+Run `scripts/tofu prod plan` and read it line by line. A repo or a permission that exists on
 GitHub but not in Terraform shows up here as a diff, and that is a finding, not
 a curiosity.
 
