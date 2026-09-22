@@ -24,7 +24,7 @@ locals {
 }
 
 module "repositories" {
-  source   = "../modules/repository"
+  source   = "../../modules/repository"
   for_each = local.repositories
 
   name                = each.key

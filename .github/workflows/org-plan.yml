@@ -1,4 +1,4 @@
-# Plans the org root on every PR. No path filter on purpose: if this check ever
+# Plans environments/prod on every PR. No path filter on purpose: if this check ever
 # becomes required, a PR that skipped it could never merge.
 name: org-plan
 
@@ -14,7 +14,7 @@ jobs:
   plan:
     uses: ./.github/workflows/tofu-plan.yml
     with:
-      working-directory: org
+      working-directory: environments/prod
     secrets:
       GH_APP_ID: ${{ secrets.GH_APP_ID }}
       GH_APP_INSTALLATION_ID: ${{ secrets.GH_APP_INSTALLATION_ID }}

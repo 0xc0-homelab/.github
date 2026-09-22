@@ -1,7 +1,7 @@
 # Every repo in the org is created through this module, so the org-wide rules
 # live here once: squash only, main only, PR required, linear history.
 
-resource "github_repository" "this" {
+resource "github_repository" "main" {
   name         = var.name
   description  = var.description
   visibility   = var.visibility
@@ -37,14 +37,14 @@ resource "github_repository" "this" {
   }
 }
 
-resource "github_repository_vulnerability_alerts" "this" {
-  repository = github_repository.this.name
+resource "github_repository_vulnerability_alerts" "main" {
+  repository = github_repository.main.name
   enabled    = true
 }
 
-resource "github_repository_ruleset" "default_branch" {
+resource "github_repository_ruleset" "main" {
   name        = "default-branch"
-  repository  = github_repository.this.name
+  repository  = github_repository.main.name
   target      = "branch"
   enforcement = var.ruleset_enforcement
 

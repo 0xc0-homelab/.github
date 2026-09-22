@@ -1,18 +1,10 @@
+# RustFS, S3-compatible. Key convention: homelab/<repo>/<environment>.tfstate.
+# Credentials come from AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY, never from
+# this file.
 terraform {
-  required_version = "~> 1.12"
-
-  required_providers {
-    github = {
-      source  = "integrations/github"
-      version = "6.13.0"
-    }
-  }
-
-  # RustFS, S3-compatible. Credentials come from AWS_ACCESS_KEY_ID and
-  # AWS_SECRET_ACCESS_KEY, never from this file.
   backend "s3" {
     bucket = "tfstate"
-    key    = "homelab/github-org.tfstate"
+    key    = "homelab/.github/prod.tfstate"
     region = "us-east-1"
 
     endpoints = {

@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
-# Runs tofu against org/ with the secrets decrypted into the environment only.
-# Usage: scripts/tofu plan | scripts/tofu init | ...
+# Runs tofu against one environment with the secrets decrypted into the
+# environment only, never onto disk.
+# Usage: scripts/tofu <environment> <tofu args...>   e.g. scripts/tofu prod plan
 set -euo pipefail
 cd "$(dirname "$0")/.."
-exec sops exec-env secrets/tofu.sops.yaml "tofu -chdir=org $(printf '%q ' "$@")"
+
+env="${1:?usage: scripts/tofu <environment> <tofu args...>}"
+shift
+[ -d "environments/$env" ] || { echo "no such environment: environments/$env" >&2; exit 1; }
+
+exec sops exec-env secrets/tofu.sops.yaml "tofu -chdir=environments/$env $(printf '%q ' "$@")"
