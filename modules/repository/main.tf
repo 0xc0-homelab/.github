@@ -85,3 +85,29 @@ resource "github_repository_ruleset" "main" {
     }
   }
 }
+
+# Applies from CI run in this environment and wait for a reviewer's approval.
+# That approval is the human launching the apply. Opt-in per repo.
+resource "github_repository_environment" "main" {
+  count = length(var.production_environment_reviewers) > 0 ? 1 : 0
+
+  repository  = github_repository.main.name
+  environment = "production"
+
+  reviewers {
+    users = var.production_environment_reviewers
+  }
+
+  deployment_branch_policy {
+    protected_branches     = false
+    custom_branch_policies = true
+  }
+}
+
+resource "github_repository_environment_deployment_policy" "main" {
+  count = length(var.production_environment_reviewers) > 0 ? 1 : 0
+
+  repository     = github_repository.main.name
+  environment    = github_repository_environment.main[0].environment
+  branch_pattern = "main"
+}

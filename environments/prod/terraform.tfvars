@@ -6,8 +6,9 @@ operator_user_id = 94703619 # sergioaten
 # Topics: homelab on every repo, plus one per tool the repo actually contains.
 repositories = {
   ".github" = {
-    description = "Organization Terraform, reusable workflows and org-wide templates"
-    topics      = ["homelab", "opentofu", "github-actions"]
+    description            = "Organization Terraform, reusable workflows and org-wide templates"
+    topics                 = ["homelab", "opentofu", "github-actions"]
+    production_environment = true
   }
   "workspace" = {
     description = "Umbrella workspace: cross-repo rules, design and bootstrap"
@@ -18,8 +19,9 @@ repositories = {
     topics      = ["homelab", "claude-code"]
   }
   "infrastructure" = {
-    description = "Packer, OpenTofu and Ansible for the Proxmox homelab"
-    topics      = ["homelab", "proxmox", "opentofu", "packer", "ansible"]
+    description            = "Packer, OpenTofu and Ansible for the Proxmox homelab"
+    topics                 = ["homelab", "proxmox", "opentofu", "packer", "ansible"]
+    production_environment = true
   }
   "deployments" = {
     description = "Docker Compose per VM, and ArgoCD manifests from phase 6"

@@ -38,6 +38,8 @@ No modules.
 | Name | Type |
 | ---- | ---- |
 | [github_repository.main](https://registry.terraform.io/providers/integrations/github/6.13.0/docs/resources/repository) | resource |
+| [github_repository_environment.main](https://registry.terraform.io/providers/integrations/github/6.13.0/docs/resources/repository_environment) | resource |
+| [github_repository_environment_deployment_policy.main](https://registry.terraform.io/providers/integrations/github/6.13.0/docs/resources/repository_environment_deployment_policy) | resource |
 | [github_repository_ruleset.main](https://registry.terraform.io/providers/integrations/github/6.13.0/docs/resources/repository_ruleset) | resource |
 | [github_repository_vulnerability_alerts.main](https://registry.terraform.io/providers/integrations/github/6.13.0/docs/resources/repository_vulnerability_alerts) | resource |
 
@@ -47,6 +49,7 @@ No modules.
 | ---- | ----------- | ---- | ------- | :------: |
 | <a name="input_description"></a> [description](#input\_description) | One-line description shown on GitHub. | `string` | n/a | yes |
 | <a name="input_name"></a> [name](#input\_name) | Repository name. | `string` | n/a | yes |
+| <a name="input_production_environment_reviewers"></a> [production\_environment\_reviewers](#input\_production\_environment\_reviewers) | GitHub user IDs who must approve every apply from this repo. Empty: the repo gets no production environment. | `list(number)` | `[]` | no |
 | <a name="input_required_status_checks"></a> [required\_status\_checks](#input\_required\_status\_checks) | Check contexts that must pass before merging. Only list checks that run on every PR, or PRs that skip them can never merge. | `list(string)` | `[]` | no |
 | <a name="input_ruleset_enforcement"></a> [ruleset\_enforcement](#input\_ruleset\_enforcement) | active, or disabled only while bootstrapping a repo whose history has not been pushed yet. | `string` | `"active"` | no |
 | <a name="input_topics"></a> [topics](#input\_topics) | Repository topics. | `list(string)` | `[]` | no |

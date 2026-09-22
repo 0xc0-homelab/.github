@@ -60,8 +60,17 @@ jobs:
     secrets: inherit
 ```
 
-Required secrets: `GH_APP_ID`, `GH_APP_INSTALLATION_ID`, `GH_APP_PRIVATE_KEY`,
-`TF_STATE_ACCESS_KEY`, `TF_STATE_SECRET_KEY`.
+Secrets, all passed explicitly by the caller:
+
+| Secret | Needed by |
+|---|---|
+| `TF_STATE_ACCESS_KEY`, `TF_STATE_SECRET_KEY` | every root (RustFS state) |
+| `GH_APP_ID`, `GH_APP_INSTALLATION_ID`, `GH_APP_PRIVATE_KEY` | roots using the GitHub provider |
+| `PROXMOX_VE_ENDPOINT`, `PROXMOX_VE_API_TOKEN` | roots using `bpg/proxmox` |
+
+A repo whose applies run from CI needs `production_environment = true` in
+`environments/prod/terraform.tfvars`: that creates the approval-gated
+environment the apply workflow waits on.
 
 ## Bootstrap
 
