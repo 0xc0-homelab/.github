@@ -1,0 +1,25 @@
+# Reusable: fails a PR whose body does not link an issue. No work in this org
+# happens without an issue on the project board, and this is where GitHub
+# enforces it. Needs no secrets, so every repo can call it.
+name: pr-issue
+
+on:
+  workflow_call:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - name: linked issue
+        env:
+          # Read from the environment, never interpolated into the script.
+          BODY: ${{ github.event.pull_request.body }}
+        run: |
+          pattern='(^|[^[:alnum:]])(close[sd]?|fix(e[sd])?|resolve[sd]?|refs?)[[:space:]]+([[:alnum:]_.-]+/[[:alnum:]_.-]+)?#[0-9]+'
+          if printf '%s' "$BODY" | grep -Eiq "$pattern"; then
+            echo "Linked issue found."
+          else
+            echo "::error::The PR body must link an issue: 'Closes #N', 'Refs #N' or 'Refs owner/repo#N'. Every change needs an issue on the org project board."
+            exit 1
+          fi

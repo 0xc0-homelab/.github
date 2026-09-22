@@ -52,6 +52,9 @@ readable by anyone. No secret value ever goes in here — only references.
 - The self-hosted runner is `vm-ci` (10.10.1.10), ephemeral. Do not register
   others.
 - Never run `tofu apply` or `destroy`. Here least of all.
+- No work without an issue on the org project board. The PR links it
+  (`Closes #N` / `Refs owner/repo#N`) or the `issue` check fails. See the
+  workspace `CLAUDE.md`, section Tracking.
 - Never keep a saved plan file: it contains the App private key in plaintext.
 - OpenTofu is always written as modules, laid out as `modules/<name>/` and
   `environments/<env>/`. A root only calls modules; a resource sits in a root
