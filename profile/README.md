@@ -42,11 +42,11 @@ the operator's approval.
 
 | | Phase | Delivers |
 |---|---|---|
-| 1 | Base | Proxmox, zones, NAT, images, admin access and the edge |
+| 1 | Base | Proxmox, SDN zones with NAT, images, admin access and the edge |
 | 2 | Core | Applications, data, CI, and backups with a timed restore |
 | 3 | Platform | Monitoring with alerts, Vault |
 | 4 | Resilience | An external cloud VM and uptime checks |
-| 5 | HA | A second node, replication, SDN |
+| 5 | HA | A second node, replication, SDN across both nodes |
 | 6 | Kubernetes | RKE2 and ArgoCD |
 
 A phase is not done until what it promises has been tested. For phase 2 that
