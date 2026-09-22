@@ -1,0 +1,5 @@
+# Tooling for the .github (organization Terraform) repo.
+[tools]
+opentofu = "1.12.6"
+gh       = "2.101.0"
+jq       = "1.8.2"
