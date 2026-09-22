@@ -1,0 +1,82 @@
+# Reusable: fmt, validate and plan an OpenTofu root, and post the plan on the PR.
+# Called by this repo and by any other repo in the org.
+name: tofu-plan
+
+on:
+  workflow_call:
+    inputs:
+      working-directory:
+        description: OpenTofu root to plan, relative to the repo root.
+        type: string
+        required: true
+    secrets:
+      GH_APP_ID:
+        required: true
+      GH_APP_INSTALLATION_ID:
+        required: true
+      GH_APP_PRIVATE_KEY:
+        required: true
+      TF_STATE_ACCESS_KEY:
+        required: true
+      TF_STATE_SECRET_KEY:
+        required: true
+
+jobs:
+  tofu:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    env:
+      TF_IN_AUTOMATION: "true"
+      TF_INPUT: "false"
+      TF_VAR_github_app_id: ${{ secrets.GH_APP_ID }}
+      TF_VAR_github_app_installation_id: ${{ secrets.GH_APP_INSTALLATION_ID }}
+      TF_VAR_github_app_private_key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.TF_STATE_ACCESS_KEY }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.TF_STATE_SECRET_KEY }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # Tool versions come from mise.toml, same as on the laptop.
+      - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
+
+      - name: fmt
+        run: tofu fmt -check -recursive -no-color
+
+      - name: init
+        run: tofu -chdir="${{ inputs.working-directory }}" init -no-color
+
+      - name: validate
+        run: tofu -chdir="${{ inputs.working-directory }}" validate -no-color
+
+      - name: plan
+        run: |
+          tofu -chdir="${{ inputs.working-directory }}" plan -no-color -out=tfplan
+          tofu -chdir="${{ inputs.working-directory }}" show -no-color tfplan > plan.txt
+
+      - name: comment
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          ROOT: ${{ inputs.working-directory }}
+        with:
+          script: |
+            const fs = require('fs');
+            const root = process.env.ROOT;
+            const marker = `<!-- tofu-plan:${root} -->`;
+            let plan = fs.readFileSync('plan.txt', 'utf8');
+            const limit = 60000;
+            if (plan.length > limit) {
+              plan = plan.slice(0, limit) + '\n\n… truncated, see the job log.';
+            }
+            const body = `${marker}\n### tofu plan — \`${root}\`\n\n\`\`\`\n${plan}\n\`\`\``;
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+            const comments = await github.paginate(github.rest.issues.listComments, { owner, repo, issue_number });
+            const existing = comments.find(c => c.body.startsWith(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
+            } else {
+              await github.rest.issues.createComment({ owner, repo, issue_number, body });
+            }

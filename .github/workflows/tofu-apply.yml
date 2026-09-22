@@ -1,0 +1,58 @@
+# Reusable: apply an OpenTofu root inside a protected environment. The job does
+# not start until the operator approves it: that approval is the human
+# launching the apply.
+name: tofu-apply
+
+on:
+  workflow_call:
+    inputs:
+      working-directory:
+        description: OpenTofu root to apply, relative to the repo root.
+        type: string
+        required: true
+      environment:
+        description: Environment whose reviewers must approve the apply.
+        type: string
+        default: production
+    secrets:
+      GH_APP_ID:
+        required: true
+      GH_APP_INSTALLATION_ID:
+        required: true
+      GH_APP_PRIVATE_KEY:
+        required: true
+      TF_STATE_ACCESS_KEY:
+        required: true
+      TF_STATE_SECRET_KEY:
+        required: true
+
+jobs:
+  tofu:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    permissions:
+      contents: read
+    concurrency:
+      group: tofu-apply-${{ github.repository }}-${{ inputs.working-directory }}
+      cancel-in-progress: false
+    env:
+      TF_IN_AUTOMATION: "true"
+      TF_INPUT: "false"
+      TF_VAR_github_app_id: ${{ secrets.GH_APP_ID }}
+      TF_VAR_github_app_installation_id: ${{ secrets.GH_APP_INSTALLATION_ID }}
+      TF_VAR_github_app_private_key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.TF_STATE_ACCESS_KEY }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.TF_STATE_SECRET_KEY }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
+
+      - name: init
+        run: tofu -chdir="${{ inputs.working-directory }}" init -no-color
+
+      - name: plan
+        run: tofu -chdir="${{ inputs.working-directory }}" plan -no-color -out=tfplan
+
+      - name: apply
+        run: tofu -chdir="${{ inputs.working-directory }}" apply -no-color tfplan

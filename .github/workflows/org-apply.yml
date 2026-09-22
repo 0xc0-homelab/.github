@@ -1,0 +1,24 @@
+# Applies the org root after a merge to main, once the operator approves the
+# production environment.
+name: org-apply
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  apply:
+    uses: ./.github/workflows/tofu-apply.yml
+    with:
+      working-directory: org
+      environment: production
+    secrets:
+      GH_APP_ID: ${{ secrets.GH_APP_ID }}
+      GH_APP_INSTALLATION_ID: ${{ secrets.GH_APP_INSTALLATION_ID }}
+      GH_APP_PRIVATE_KEY: ${{ secrets.GH_APP_PRIVATE_KEY }}
+      TF_STATE_ACCESS_KEY: ${{ secrets.TF_STATE_ACCESS_KEY }}
+      TF_STATE_SECRET_KEY: ${{ secrets.TF_STATE_SECRET_KEY }}
