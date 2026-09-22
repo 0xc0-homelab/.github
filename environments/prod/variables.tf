@@ -32,6 +32,8 @@ variable "repositories" {
   type = map(object({
     description = string
     topics      = optional(list(string), [])
+    # Applies from this repo's CI wait for the operator in a production environment.
+    production_environment = optional(bool, false)
   }))
 
   validation {

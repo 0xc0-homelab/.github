@@ -41,3 +41,9 @@ variable "required_status_checks" {
   type        = list(string)
   default     = []
 }
+
+variable "production_environment_reviewers" {
+  description = "GitHub user IDs who must approve every apply from this repo. Empty: the repo gets no production environment."
+  type        = list(number)
+  default     = []
+}
