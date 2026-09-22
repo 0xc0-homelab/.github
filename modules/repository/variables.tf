@@ -1,0 +1,43 @@
+variable "name" {
+  description = "Repository name."
+  type        = string
+}
+
+variable "description" {
+  description = "One-line description shown on GitHub."
+  type        = string
+}
+
+variable "visibility" {
+  description = "public or private. On the Free plan, rulesets only apply to public repos."
+  type        = string
+  default     = "public"
+
+  validation {
+    condition     = contains(["public", "private"], var.visibility)
+    error_message = "visibility must be public or private."
+  }
+}
+
+variable "topics" {
+  description = "Repository topics."
+  type        = list(string)
+  default     = []
+}
+
+variable "ruleset_enforcement" {
+  description = "active, or disabled only while bootstrapping a repo whose history has not been pushed yet."
+  type        = string
+  default     = "active"
+
+  validation {
+    condition     = contains(["active", "disabled"], var.ruleset_enforcement)
+    error_message = "ruleset_enforcement must be active or disabled."
+  }
+}
+
+variable "required_status_checks" {
+  description = "Check contexts that must pass before merging. Only list checks that run on every PR, or PRs that skip them can never merge."
+  type        = list(string)
+  default     = []
+}
