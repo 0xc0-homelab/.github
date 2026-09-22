@@ -1,5 +1,6 @@
-# Plans environments/prod on every PR. No path filter on purpose: if this check ever
-# becomes required, a PR that skipped it could never merge.
+# Runs on every PR, with no paths filter on purpose: if this check becomes
+# required, a PR the workflow never started for could never merge. PRs that
+# touch no OpenTofu finish green without planning (see tofu-plan.yml).
 name: org-plan
 
 on:
@@ -15,6 +16,8 @@ jobs:
     uses: ./.github/workflows/tofu-plan.yml
     with:
       working-directory: environments/prod
+      # Also re-plan when the tofu workflows themselves change.
+      paths: '^(environments/|modules/|mise\.toml$|\.github/workflows/(tofu|org)-)'
     secrets:
       GH_APP_ID: ${{ secrets.GH_APP_ID }}
       GH_APP_INSTALLATION_ID: ${{ secrets.GH_APP_INSTALLATION_ID }}
