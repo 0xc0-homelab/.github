@@ -14,22 +14,14 @@ on:
         description: Environment whose reviewers must approve the apply.
         type: string
         default: production
-    # Each root gets only the secrets its providers need: the GitHub App for the
-    # org root, Proxmox for infrastructure. The state credentials are always needed.
+      secrets-file:
+        description: SOPS-encrypted file with every secret the root needs, relative to the repo root.
+        type: string
+        default: secrets/tofu.sops.yaml
+    # The only secret: this repo's CI age key. Everything else is decrypted from
+    # secrets-file, so each repo's CI can read only its own secrets.
     secrets:
-      GH_APP_ID:
-        required: false
-      GH_APP_INSTALLATION_ID:
-        required: false
-      GH_APP_PRIVATE_KEY:
-        required: false
-      PROXMOX_VE_ENDPOINT:
-        required: false
-      PROXMOX_VE_API_TOKEN:
-        required: false
-      TF_STATE_ACCESS_KEY:
-        required: true
-      TF_STATE_SECRET_KEY:
+      SOPS_AGE_KEY:
         required: true
 
 jobs:
@@ -52,23 +44,30 @@ jobs:
       # Wait for a PR plan or a local run to release the state lock.
       TF_CLI_ARGS_plan: "-lock-timeout=10m"
       TF_CLI_ARGS_apply: "-lock-timeout=10m"
-      TF_VAR_github_app_id: ${{ secrets.GH_APP_ID }}
-      TF_VAR_github_app_installation_id: ${{ secrets.GH_APP_INSTALLATION_ID }}
-      TF_VAR_github_app_private_key: ${{ secrets.GH_APP_PRIVATE_KEY }}
-      PROXMOX_VE_ENDPOINT: ${{ secrets.PROXMOX_VE_ENDPOINT }}
-      PROXMOX_VE_API_TOKEN: ${{ secrets.PROXMOX_VE_API_TOKEN }}
-      AWS_ACCESS_KEY_ID: ${{ secrets.TF_STATE_ACCESS_KEY }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.TF_STATE_SECRET_KEY }}
+      ROOT: ${{ inputs.working-directory }}
+      SECRETS_FILE: ${{ inputs.secrets-file }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
 
+      # The CI key goes where sops looks for it on Linux. Decrypted values are
+      # not GitHub secrets, so GitHub would not mask them: mask every line.
+      - name: secrets
+        env:
+          SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+        run: |
+          key_file="${SOPS_AGE_KEY_FILE:-$HOME/.config/sops/age/keys.txt}"
+          mkdir -p "$(dirname "$key_file")"
+          ( umask 077 && printf '%s\n' "$SOPS_AGE_KEY" > "$key_file" )
+          sops decrypt --output-type json "$SECRETS_FILE" | jq -r '.[] | strings' |
+            while IFS= read -r line; do [ -n "$line" ] && echo "::add-mask::$line"; done
+
       - name: init
-        run: tofu -chdir="${{ inputs.working-directory }}" init -no-color
+        run: sops exec-env "$SECRETS_FILE" 'tofu -chdir="$ROOT" init -no-color'
 
       - name: plan
-        run: tofu -chdir="${{ inputs.working-directory }}" plan -no-color -out=tfplan
+        run: sops exec-env "$SECRETS_FILE" 'tofu -chdir="$ROOT" plan -no-color -out=tfplan'
 
       - name: apply
-        run: tofu -chdir="${{ inputs.working-directory }}" apply -no-color tfplan
+        run: sops exec-env "$SECRETS_FILE" 'tofu -chdir="$ROOT" apply -no-color tfplan'

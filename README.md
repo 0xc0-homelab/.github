@@ -11,7 +11,7 @@ profile/README.md          the org page: what the project is, current phase
 modules/repository/        every repo is created through this module
 environments/prod/         root: calls the module, owns the production env
 scripts/tofu               runs tofu on an environment, secrets decrypted in env
-secrets/tofu.sops.yaml     SOPS-encrypted, gitignored (this repo is public)
+secrets/tofu.sops.yaml     SOPS-encrypted, to the operator and this repo's CI key
 .github/workflows/
   tofu-plan.yml            reusable: fmt, validate, plan, comment on the PR
   tofu-apply.yml           reusable: apply inside an approval-gated environment
@@ -60,13 +60,11 @@ jobs:
     secrets: inherit
 ```
 
-Secrets, all passed explicitly by the caller:
-
-| Secret | Needed by |
-|---|---|
-| `TF_STATE_ACCESS_KEY`, `TF_STATE_SECRET_KEY` | every root (RustFS state) |
-| `GH_APP_ID`, `GH_APP_INSTALLATION_ID`, `GH_APP_PRIVATE_KEY` | roots using the GitHub provider |
-| `PROXMOX_VE_ENDPOINT`, `PROXMOX_VE_API_TOKEN` | roots using `bpg/proxmox` |
+One secret per repo: **`SOPS_AGE_KEY`**, that repo's CI age key. Everything
+else a root needs — provider credentials, the RustFS state keys — lives in the
+repo's `secrets/tofu.sops.yaml`, encrypted to the operator and to that CI key.
+The workflows decrypt it with `sops exec-env` and mask every decrypted value in
+the logs. Override the path with the `secrets-file` input.
 
 A repo whose applies run from CI needs `production_environment = true` in
 `environments/prod/terraform.tfvars`: that creates the approval-gated
@@ -81,7 +79,9 @@ cannot come from CI. The order matters:
    receive its initial push.
    `scripts/tofu prod apply -var bootstrap=true`
 2. **Push the existing history** of the five local repos to their new remotes.
-3. **Set the Actions secrets** on this repo, from `secrets/tofu.sops.yaml`.
+3. **Give the repo its CI key**: generate an age key, add its public half to
+   `.sops.yaml`, run `sops updatekeys`, and store the private half as the
+   `SOPS_AGE_KEY` Actions secret. Never write it to disk.
 4. **Second apply, rulesets active.** `scripts/tofu prod apply`
    From here on, every change goes through a PR and `org-apply`.
 
@@ -102,6 +102,14 @@ Several PRs can plan, and several merges can apply, against the same state.
 - **Stale PR plans** — PR B planned before PR A merged — are stopped by the
   ruleset requiring branches to be up to date. That only applies once the plan
   check is required.
+
+## Secrets
+
+Committed, encrypted. The repos are public, so the ciphertext is public too;
+that is standard SOPS practice, and the answer to a leaked key is rotating the
+secrets it protects, which would be needed anyway. Each repo's CI key decrypts
+only that repo's files. From phase 2 the CI key lives on `vm-ci` and the
+Actions secret goes away.
 
 ## State
 
