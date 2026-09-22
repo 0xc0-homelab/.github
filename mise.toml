@@ -6,7 +6,12 @@ jq       = "1.8.2"
 sops     = "3.13.3"
 age      = "1.3.2"
 actionlint = "1.7.12"
+terraform-docs = "0.24.0"
 
 [env]
 # Same path on macOS and Linux. Without it sops looks in a macOS-only location.
 SOPS_AGE_KEY_FILE = "{{env.HOME}}/.config/sops/age/keys.txt"
+
+[tasks.docs]
+description = "Regenerate the inputs/outputs section of every module README"
+run = 'for m in modules/*/; do terraform-docs markdown table --output-file README.md --output-mode inject "$m"; done'
