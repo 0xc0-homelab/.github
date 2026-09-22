@@ -8,9 +8,11 @@ without a pull request, and nothing is applied without a human approving it.
 
 ## What it is
 
-One Proxmox VE node on a ZFS mirror, until a second node arrives in phase 5.
-The host is the router and the firewall for six zones — management, CI,
-platform, edge, workloads and data — and runs nothing else.
+One Proxmox VE node on a Hetzner dedicated server, until a second node
+arrives in phase 5. The host is the router and the firewall for six zones —
+management, CI, platform, edge, workloads and data. Alongside Proxmox it runs
+only the base services: a reverse proxy, the object store holding the
+infrastructure state, and the backup server, which ships to off-site storage.
 
 - **Public traffic** enters through a Cloudflare Tunnel into the edge zone,
   where open-appsec and NGINX route it to the workloads.
