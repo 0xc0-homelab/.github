@@ -3,7 +3,11 @@
 Organization Terraform for `0xc0-homelab`, the reusable workflows every repo
 calls, and the org-wide templates.
 
+What the homelab itself is lives in [`profile/README.md`](profile/README.md),
+which GitHub shows on the organization page.
+
 ```
+profile/README.md          the org page: what the project is, current phase
 modules/repository/        every repo is created through this module
 environments/prod/         root: calls the module, owns the production env
 scripts/tofu               runs tofu on an environment, secrets decrypted in env
