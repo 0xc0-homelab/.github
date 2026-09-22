@@ -32,12 +32,20 @@ jobs:
     environment: ${{ inputs.environment }}
     permissions:
       contents: read
+    # Applies to the same root queue up, oldest first; a running apply is never
+    # cancelled. Only one run can wait in the queue: a third merge replaces the
+    # waiting one, which is safe because main is linear and the newer commit
+    # contains the older one. Every apply re-plans against the live state, so
+    # the second of two merges applies on top of the first.
     concurrency:
       group: tofu-apply-${{ github.repository }}-${{ inputs.working-directory }}
       cancel-in-progress: false
     env:
       TF_IN_AUTOMATION: "true"
       TF_INPUT: "false"
+      # Wait for a PR plan or a local run to release the state lock.
+      TF_CLI_ARGS_plan: "-lock-timeout=10m"
+      TF_CLI_ARGS_apply: "-lock-timeout=10m"
       TF_VAR_github_app_id: ${{ secrets.GH_APP_ID }}
       TF_VAR_github_app_installation_id: ${{ secrets.GH_APP_INSTALLATION_ID }}
       TF_VAR_github_app_private_key: ${{ secrets.GH_APP_PRIVATE_KEY }}
