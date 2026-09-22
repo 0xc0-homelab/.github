@@ -26,3 +26,21 @@ variable "bootstrap" {
   type        = bool
   default     = false
 }
+
+variable "repositories" {
+  description = "Every repository in the org, keyed by name. Adding a repo is adding an entry here."
+  type = map(object({
+    description = string
+    topics      = optional(list(string), [])
+  }))
+
+  validation {
+    condition     = alltrue([for name in keys(var.repositories) : can(regex("^[A-Za-z0-9._-]{1,100}$", name))])
+    error_message = "Repository names may only contain letters, digits, '.', '_' and '-', up to 100 characters."
+  }
+
+  validation {
+    condition     = alltrue([for r in values(var.repositories) : length(trimspace(r.description)) > 0])
+    error_message = "Every repository needs a non-empty description."
+  }
+}
