@@ -16,6 +16,15 @@ into the workspace repo at exactly the path GitHub reads.
 - `.github/workflows/` — reusable workflows consumed by the other repos.
 - Organization templates (issue templates, PR template, CODEOWNERS).
 
+## Visibility
+
+This repo is **public**, deliberately. Organization issue and PR templates,
+CODEOWNERS defaults and the org profile README only apply from a public
+`.github`.
+
+The consequence is that the org Terraform and the reusable workflows are
+readable by anyone. No secret value ever goes in here — only references.
+
 ## Hard rules
 
 - Everything written is in English: files, file names, comments, commits,
