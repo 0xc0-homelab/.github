@@ -17,22 +17,14 @@ on:
         description: Extended regex over changed file paths. A PR touching none of them skips the plan.
         type: string
         default: '^(environments/|modules/|mise\.toml$)'
-    # Each root gets only the secrets its providers need: the GitHub App for the
-    # org root, Proxmox for infrastructure. The state credentials are always needed.
+      secrets-file:
+        description: SOPS-encrypted file with every secret the root needs, relative to the repo root.
+        type: string
+        default: secrets/tofu.sops.yaml
+    # The only secret: this repo's CI age key. Everything else is decrypted from
+    # secrets-file, so each repo's CI can read only its own secrets.
     secrets:
-      GH_APP_ID:
-        required: false
-      GH_APP_INSTALLATION_ID:
-        required: false
-      GH_APP_PRIVATE_KEY:
-        required: false
-      PROXMOX_VE_ENDPOINT:
-        required: false
-      PROXMOX_VE_API_TOKEN:
-        required: false
-      TF_STATE_ACCESS_KEY:
-        required: true
-      TF_STATE_SECRET_KEY:
+      SOPS_AGE_KEY:
         required: true
 
 jobs:
@@ -53,13 +45,8 @@ jobs:
       # Wait for the state lock instead of failing: an apply or another PR's
       # plan may hold it for a moment.
       TF_CLI_ARGS_plan: "-lock-timeout=5m"
-      TF_VAR_github_app_id: ${{ secrets.GH_APP_ID }}
-      TF_VAR_github_app_installation_id: ${{ secrets.GH_APP_INSTALLATION_ID }}
-      TF_VAR_github_app_private_key: ${{ secrets.GH_APP_PRIVATE_KEY }}
-      PROXMOX_VE_ENDPOINT: ${{ secrets.PROXMOX_VE_ENDPOINT }}
-      PROXMOX_VE_API_TOKEN: ${{ secrets.PROXMOX_VE_API_TOKEN }}
-      AWS_ACCESS_KEY_ID: ${{ secrets.TF_STATE_ACCESS_KEY }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.TF_STATE_SECRET_KEY }}
+      ROOT: ${{ inputs.working-directory }}
+      SECRETS_FILE: ${{ inputs.secrets-file }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -88,29 +75,40 @@ jobs:
       - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
         if: steps.changes.outputs.tofu == 'true'
 
+      # The CI key goes where sops looks for it on Linux. Decrypted values are
+      # not GitHub secrets, so GitHub would not mask them: mask every line.
+      - name: secrets
+        if: steps.changes.outputs.tofu == 'true'
+        env:
+          SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+        run: |
+          key_file="${SOPS_AGE_KEY_FILE:-$HOME/.config/sops/age/keys.txt}"
+          mkdir -p "$(dirname "$key_file")"
+          ( umask 077 && printf '%s\n' "$SOPS_AGE_KEY" > "$key_file" )
+          sops decrypt --output-type json "$SECRETS_FILE" | jq -r '.[] | strings' |
+            while IFS= read -r line; do [ -n "$line" ] && echo "::add-mask::$line"; done
+
       - name: fmt
         if: steps.changes.outputs.tofu == 'true'
         run: tofu fmt -check -recursive -no-color
 
       - name: init
         if: steps.changes.outputs.tofu == 'true'
-        run: tofu -chdir="${{ inputs.working-directory }}" init -no-color
+        run: sops exec-env "$SECRETS_FILE" 'tofu -chdir="$ROOT" init -no-color'
 
       - name: validate
         if: steps.changes.outputs.tofu == 'true'
-        run: tofu -chdir="${{ inputs.working-directory }}" validate -no-color
+        run: tofu -chdir="$ROOT" validate -no-color
 
       - name: plan
         if: steps.changes.outputs.tofu == 'true'
         run: |
-          tofu -chdir="${{ inputs.working-directory }}" plan -no-color -out=tfplan
-          tofu -chdir="${{ inputs.working-directory }}" show -no-color tfplan > plan.txt
+          sops exec-env "$SECRETS_FILE" 'tofu -chdir="$ROOT" plan -no-color -out=tfplan'
+          sops exec-env "$SECRETS_FILE" 'tofu -chdir="$ROOT" show -no-color tfplan' > plan.txt
 
       - name: comment
         if: github.event_name == 'pull_request' && steps.changes.outputs.tofu == 'true'
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
-        env:
-          ROOT: ${{ inputs.working-directory }}
         with:
           script: |
             const fs = require('fs');
