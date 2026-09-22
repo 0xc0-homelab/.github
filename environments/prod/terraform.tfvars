@@ -21,7 +21,7 @@ repositories = {
     topics      = ["proxmox", "opentofu", "packer", "ansible", "homelab"]
   }
   "deployments" = {
-    description = "Docker Compose per VM, and Flux manifests from phase 6"
+    description = "Docker Compose per VM, and ArgoCD manifests from phase 6"
     topics      = ["docker-compose", "homelab"]
   }
 }

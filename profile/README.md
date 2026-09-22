@@ -33,7 +33,7 @@ the operator's approval.
 | [`.github`](https://github.com/0xc0-homelab/.github) | Organization Terraform, reusable workflows, this page |
 | [`workspace`](https://github.com/0xc0-homelab/workspace) | Cross-repo rules, the design, the bootstrap |
 | [`infrastructure`](https://github.com/0xc0-homelab/infrastructure) | Packer, OpenTofu and Ansible — and the [zone matrix](https://github.com/0xc0-homelab/infrastructure/blob/main/docs/zones.md) |
-| [`deployments`](https://github.com/0xc0-homelab/deployments) | Docker Compose per VM; Flux from phase 6 |
+| [`deployments`](https://github.com/0xc0-homelab/deployments) | Docker Compose per VM; ArgoCD from phase 6 |
 | [`claude-config`](https://github.com/0xc0-homelab/claude-config) | Claude Code plugin: agents, skills and guardrail hooks |
 
 ## Phases
@@ -45,7 +45,7 @@ the operator's approval.
 | 3 | Platform | Monitoring with alerts, Vault |
 | 4 | Resilience | An external cloud VM and uptime checks |
 | 5 | HA | A second node, replication, SDN |
-| 6 | Kubernetes | RKE2 and Flux |
+| 6 | Kubernetes | RKE2 and ArgoCD |
 
 A phase is not done until what it promises has been tested. For phase 2 that
 means a restore, timed and written down.
