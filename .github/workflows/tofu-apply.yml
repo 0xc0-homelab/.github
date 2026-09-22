@@ -18,6 +18,10 @@ on:
         description: SOPS-encrypted file with every secret the root needs, relative to the repo root.
         type: string
         default: secrets/tofu.sops.yaml
+      tools:
+        description: mise tools to install. Only these — a broken, unrelated tool in the repo's mise.toml must not block a plan or an apply.
+        type: string
+        default: opentofu sops jq
     # The only secret: this repo's CI age key. Everything else is decrypted from
     # secrets-file, so each repo's CI can read only its own secrets.
     secrets:
@@ -50,6 +54,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
+        with:
+          install_args: ${{ inputs.tools }}
 
       # The CI key goes where sops looks for it on Linux. Decrypted values are
       # not GitHub secrets, so GitHub would not mask them: mask every line.
