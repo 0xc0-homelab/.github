@@ -18,6 +18,8 @@ jobs:
     uses: 0xc0-homelab/.github/.github/workflows/tofu-plan.yml@main
     with:
       working-directory: environments/prod
+      # The self-hosted runners on vm-ci, inside the network.
+      runs-on: '{"group": "homelab", "labels": "homelab"}'
       # Also re-plan when the tofu workflows themselves change.
       paths: '^(environments/|modules/|mise\.toml$|\.github/workflows/(tofu|org)-)'
     secrets:
