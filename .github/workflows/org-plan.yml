@@ -13,7 +13,9 @@ permissions:
 
 jobs:
   plan:
-    uses: ./.github/workflows/tofu-plan.yml
+    # From main, never the PR's copy: the runner group only admits the
+    # reusable workflows as they are on main.
+    uses: 0xc0-homelab/.github/.github/workflows/tofu-plan.yml@main
     with:
       working-directory: environments/prod
       # Also re-plan when the tofu workflows themselves change.

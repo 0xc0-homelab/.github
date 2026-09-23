@@ -52,6 +52,7 @@ variable "runner_group" {
   type = object({
     name         = string
     repositories = list(string)
+    workflows    = list(string)
   })
 
   validation {
