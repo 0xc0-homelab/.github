@@ -33,4 +33,9 @@ repositories = {
 runner_group = {
   name         = "homelab"
   repositories = [".github", "infrastructure"]
+  # The reusable tofu workflows, as they are on main.
+  workflows = [
+    "0xc0-homelab/.github/.github/workflows/tofu-plan.yml@refs/heads/main",
+    "0xc0-homelab/.github/.github/workflows/tofu-apply.yml@refs/heads/main",
+  ]
 }

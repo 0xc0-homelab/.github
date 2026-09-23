@@ -17,4 +17,5 @@ module "runner_group" {
 
   name           = var.runner_group.name
   repository_ids = [for repo in var.runner_group.repositories : module.repositories[repo].repo_id]
+  workflows      = var.runner_group.workflows
 }
