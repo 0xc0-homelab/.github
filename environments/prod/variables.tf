@@ -46,3 +46,16 @@ variable "repositories" {
     error_message = "Every repository needs a non-empty description."
   }
 }
+
+variable "runner_group" {
+  description = "The self-hosted runner group, and the managed repositories that may use it."
+  type = object({
+    name         = string
+    repositories = list(string)
+  })
+
+  validation {
+    condition     = alltrue([for repo in var.runner_group.repositories : contains(keys(var.repositories), repo)])
+    error_message = "The runner group lists a repository that is not managed here."
+  }
+}
