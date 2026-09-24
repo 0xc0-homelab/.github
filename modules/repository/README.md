@@ -47,6 +47,7 @@ No modules.
 
 | Name | Description | Type | Default | Required |
 | ---- | ----------- | ---- | ------- | :------: |
+| <a name="input_auto_init"></a> [auto\_init](#input\_auto\_init) | Create the repo with an initial commit on main. Only for a brand-new repo with no history elsewhere: set at creation, it never changes afterwards. | `bool` | `false` | no |
 | <a name="input_description"></a> [description](#input\_description) | One-line description shown on GitHub. | `string` | n/a | yes |
 | <a name="input_name"></a> [name](#input\_name) | Repository name. | `string` | n/a | yes |
 | <a name="input_production_environment_reviewers"></a> [production\_environment\_reviewers](#input\_production\_environment\_reviewers) | GitHub user IDs who must approve every apply from this repo. Empty: the repo gets no production environment. | `list(number)` | `[]` | no |

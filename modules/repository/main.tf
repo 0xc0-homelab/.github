@@ -18,8 +18,9 @@ resource "github_repository" "main" {
   squash_merge_commit_message = "PR_BODY"
   delete_branch_on_merge      = true
 
-  # History is pushed from an existing local repo, never initialised here.
-  auto_init = false
+  # A repo with existing history gets it pushed, and starts empty. A brand-new
+  # one can start with an initial commit instead, and needs no bootstrap.
+  auto_init = var.auto_init
 
   # A destroy archives instead of deleting: the repo stays recoverable.
   archive_on_destroy = true
