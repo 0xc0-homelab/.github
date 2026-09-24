@@ -85,6 +85,18 @@ cannot come from CI. The order matters:
 4. **Second apply, rulesets active.** `scripts/tofu prod apply`
    From here on, every change goes through a PR and `org-apply`.
 
+## Adding a repo
+
+An entry in `repositories`, in `environments/prod/terraform.tfvars`, and a PR.
+How its `main` gets its first commit decides the rest:
+
+- **Brand new, no history anywhere:** `auto_init = true`. GitHub creates it
+  with an initial commit, and its ruleset is active from the start.
+- **Existing history, pushed from a local repo:** `bootstrap = true`. Only its
+  ruleset is created disabled. Push the history, then a second PR removes the
+  flag, and the ruleset turns active. Every other repo stays protected
+  throughout. Give it its CI key as in step 3 above if it runs OpenTofu.
+
 ## Concurrency
 
 Several PRs can plan, and several merges can apply, against the same state.
