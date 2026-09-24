@@ -4,28 +4,33 @@
 operator_user_id = 94703619 # sergioaten
 
 # Topics: homelab on every repo, plus one per tool the repo actually contains.
+# required_checks: workspace gets issue / check once its caller has reported.
 repositories = {
   ".github" = {
     description            = "Organization Terraform, reusable workflows and org-wide templates"
     topics                 = ["homelab", "opentofu", "github-actions"]
     production_environment = true
+    required_checks        = ["issue / check", "plan / tofu"]
   }
   "workspace" = {
     description = "Umbrella workspace: cross-repo rules, design and bootstrap"
     topics      = ["homelab", "claude-code", "mise"]
   }
   "claude-config" = {
-    description = "Claude Code marketplace and the homelab plugin"
-    topics      = ["homelab", "claude-code"]
+    description     = "Claude Code marketplace and the homelab plugin"
+    topics          = ["homelab", "claude-code"]
+    required_checks = ["issue / check"]
   }
   "infrastructure" = {
     description            = "Packer, OpenTofu and Ansible for the Proxmox homelab"
     topics                 = ["homelab", "proxmox", "opentofu", "packer", "ansible"]
     production_environment = true
+    required_checks        = ["issue / check", "plan / tofu"]
   }
   "deployments" = {
-    description = "Docker Compose per VM, and ArgoCD manifests from phase 6"
-    topics      = ["docker-compose", "homelab"]
+    description     = "Docker Compose per VM, and ArgoCD manifests from phase 6"
+    topics          = ["docker-compose", "homelab"]
+    required_checks = ["issue / check"]
   }
 }
 

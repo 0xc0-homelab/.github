@@ -11,5 +11,7 @@ resource "github_actions_runner_group" "main" {
   # Only these workflows get a runner: a job a PR or a fork writes for itself
   # does not, whatever it asks for in runs-on.
   restricted_to_workflows = true
-  selected_workflows      = var.workflows
+  # Sorted: GitHub returns them in this order, so any other shows a change on
+  # every plan.
+  selected_workflows = sort(var.workflows)
 }

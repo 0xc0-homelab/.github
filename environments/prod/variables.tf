@@ -34,6 +34,10 @@ variable "repositories" {
     topics      = optional(list(string), [])
     # Applies from this repo's CI wait for the operator in a production environment.
     production_environment = optional(bool, false)
+    # Checks a PR must pass before it merges. Only checks that report on every
+    # PR, and only once they have run at least once: a required check that
+    # never reports blocks every PR.
+    required_checks = optional(list(string), [])
   }))
 
   validation {
