@@ -4,7 +4,7 @@ A single-operator homelab on a Hetzner dedicated server, built and run
 entirely as code. Nothing is configured by hand, nothing reaches `main`
 without a pull request, and nothing is applied without a human approving it.
 
-**Current phase: 1 (Base)**
+**Current phase: 2 (Cluster)**
 
 ## What it is
 
