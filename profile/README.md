@@ -40,7 +40,7 @@ operator's approval.
 | [`.github`](https://github.com/0xc0-homelab/.github) | Organization Terraform, reusable workflows, this page |
 | [`workspace`](https://github.com/0xc0-homelab/workspace) | Cross-repo rules, the design, the bootstrap |
 | [`infrastructure`](https://github.com/0xc0-homelab/infrastructure) | Packer, OpenTofu and Ansible — and the [zone design](https://github.com/0xc0-homelab/infrastructure/blob/main/docs/zones.md) |
-| [`deployments`](https://github.com/0xc0-homelab/deployments) | Docker Compose per VM; ArgoCD from phase 6 |
+| [`gitops`](https://github.com/0xc0-homelab/gitops) | ArgoCD manifests for the cluster |
 | [`claude-config`](https://github.com/0xc0-homelab/claude-config) | Claude Code plugin: agents, skills and guardrail hooks |
 
 ## Phases
