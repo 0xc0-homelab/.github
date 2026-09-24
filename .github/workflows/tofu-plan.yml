@@ -27,11 +27,11 @@ on:
         default: opentofu sops jq
       runs-on:
         description: >-
-          Where the job runs, as JSON: "ubuntu-latest", or {"group": "homelab",
-          "labels": "homelab"} for the self-hosted runners on vm-ci. A PR from a
-          fork always runs on GitHub's runners, never on the self-hosted ones.
+          Where the job runs, as JSON. Defaults to the self-hosted runners on
+          vm-ci, inside the network. A PR from a fork always runs on
+          "ubuntu-latest", never on the self-hosted ones.
         type: string
-        default: '"ubuntu-latest"'
+        default: '{"group": "homelab", "labels": "homelab"}'
     # The only secret: this repo's CI age key. Everything else is decrypted from
     # secrets-file, so each repo's CI can read only its own secrets.
     secrets:

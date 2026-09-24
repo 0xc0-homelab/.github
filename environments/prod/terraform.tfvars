@@ -4,7 +4,6 @@
 operator_user_id = 94703619 # sergioaten
 
 # Topics: homelab on every repo, plus one per tool the repo actually contains.
-# required_checks: workspace gets issue / check once its caller has reported.
 repositories = {
   ".github" = {
     description            = "Organization Terraform, reusable workflows and org-wide templates"
