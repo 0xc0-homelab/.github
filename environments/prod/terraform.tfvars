@@ -26,9 +26,9 @@ repositories = {
     production_environment = true
     required_checks        = ["issue / check", "plan / tofu"]
   }
-  "deployments" = {
-    description     = "Docker Compose per VM, and ArgoCD manifests from phase 6"
-    topics          = ["docker-compose", "homelab"]
+  "gitops" = {
+    description     = "ArgoCD manifests for the cluster"
+    topics          = ["argocd", "homelab"]
     required_checks = ["issue / check"]
   }
 }
