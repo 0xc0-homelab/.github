@@ -8,6 +8,8 @@ module "repositories" {
   visibility          = "public"
   ruleset_enforcement = var.bootstrap ? "disabled" : "active"
 
+  required_status_checks = each.value.required_checks
+
   production_environment_reviewers = each.value.production_environment ? [var.operator_user_id] : []
 }
 
