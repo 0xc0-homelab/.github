@@ -1,6 +1,7 @@
-# Runs on every PR, with no paths filter on purpose: if this check becomes
-# required, a PR the workflow never started for could never merge. PRs that
-# touch no OpenTofu finish green without planning (see tofu-plan.yml).
+# Runs on every PR, with no paths filter on purpose: the plan check is
+# required, so it must report on every PR, or one the workflow never started
+# for could never merge. PRs that touch no OpenTofu finish green without
+# planning (see tofu-plan.yml).
 name: org-plan
 
 on:

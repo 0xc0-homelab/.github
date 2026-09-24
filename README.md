@@ -1,7 +1,7 @@
 # .github
 
-Organization Terraform for `0xc0-homelab`, the reusable workflows every repo
-calls, and the org-wide templates.
+Organization Terraform for `0xc0-homelab`, and the reusable workflows every
+repo calls.
 
 What the homelab itself is lives in [`profile/README.md`](profile/README.md),
 which GitHub shows on the organization page.
@@ -9,14 +9,18 @@ which GitHub shows on the organization page.
 ```
 profile/README.md          the org page: what the project is, current phase
 modules/repository/        every repo is created through this module
-environments/prod/         root: calls the module, owns the production env
+modules/runner-group/      the runner group for the self-hosted runners on vm-ci
+environments/prod/         root: calls the modules
 scripts/tofu               runs tofu on an environment, secrets decrypted in env
 secrets/tofu.sops.yaml     SOPS-encrypted, to the operator and this repo's CI key
+mise.toml                  pinned tool versions
 .github/workflows/
   tofu-plan.yml            reusable: fmt, validate, plan, comment on the PR
   tofu-apply.yml           reusable: apply inside an approval-gated environment
+  pr-issue.yml             reusable: fail a PR that links no issue
   org-plan.yml             this repo: plan environments/prod on every PR
   org-apply.yml            this repo: apply it after merge, once approved
+  issue.yml                this repo: run pr-issue on every PR
 ```
 
 ## Conventions
@@ -57,8 +61,15 @@ jobs:
     uses: 0xc0-homelab/.github/.github/workflows/tofu-plan.yml@main
     with:
       working-directory: environments/prod
-    secrets: inherit
+    secrets:
+      SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
 ```
+
+No `runs-on` is needed: the job defaults to the self-hosted runners on
+`vm-ci`, and fork PRs go to `ubuntu-latest`. The runner group admits the
+reusable workflows already, as they are on `main`, but only from the repos in
+`runner_group.repositories`, in `environments/prod/terraform.tfvars`: the
+caller's repo must be listed there.
 
 One secret per repo: **`SOPS_AGE_KEY`**, that repo's CI age key. Everything
 else a root needs — provider credentials, the RustFS state keys — lives in the
@@ -112,18 +123,19 @@ Several PRs can plan, and several merges can apply, against the same state.
 - **Locks are waited for**, not failed on: 5 minutes for plans and local runs,
   10 for CI applies.
 - **Stale PR plans** — PR B planned before PR A merged — are stopped by the
-  ruleset requiring branches to be up to date. That only applies once the plan
-  check is required.
+  ruleset requiring branches to be up to date.
 
 ## Secrets
 
 Committed, encrypted. The repos are public, so the ciphertext is public too;
 that is standard SOPS practice, and the answer to a leaked key is rotating the
 secrets it protects, which would be needed anyway. Each repo's CI key decrypts
-only that repo's files. From phase 2 the CI key lives on `vm-ci` and the
-Actions secret goes away.
+only that repo's files. The CI key is the repo's `SOPS_AGE_KEY` Actions secret;
+the workflows write it to `$RUNNER_TEMP`, which the runner wipes when the job
+ends.
 
 ## State
 
-RustFS at `https://s3.0xc0.cc`, bucket `tfstate`, locked with a lockfile.
-Every root in the org has its own key; roots never share a state.
+RustFS at `https://s3.0xc0.cc`, bucket `tfstate`, locked with a lockfile. It is
+reachable only from inside the network: from `vm-ci`, or over WARP for local
+runs. Every root in the org has its own key; roots never share a state.

@@ -60,8 +60,6 @@ No modules.
 
 | Name | Description |
 | ---- | ----------- |
-| <a name="output_full_name"></a> [full\_name](#output\_full\_name) | owner/name. |
-| <a name="output_name"></a> [name](#output\_name) | Repository name. |
 | <a name="output_repo_id"></a> [repo\_id](#output\_repo\_id) | Numeric repository ID. |
 | <a name="output_ssh_clone_url"></a> [ssh\_clone\_url](#output\_ssh\_clone\_url) | SSH clone URL. |
 <!-- END_TF_DOCS -->

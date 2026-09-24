@@ -14,7 +14,7 @@ module "repositories" {
   production_environment_reviewers = each.value.production_environment ? [var.operator_user_id] : []
 }
 
-# The self-hosted runners on vm-ci (infrastructure#44).
+# The self-hosted runners on vm-ci.
 module "runner_group" {
   source = "../../modules/runner-group"
 

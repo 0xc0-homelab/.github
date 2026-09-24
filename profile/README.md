@@ -29,8 +29,9 @@ The full picture, with diagrams, is in the
 Templates come from official cloud images, and Packer bakes the few that need
 more. OpenTofu creates the VMs, the network and the
 firewall, and Ansible configures them. Secrets are encrypted with SOPS and age,
-moving to Vault in phase 3. CI runs on GitHub Actions; every apply waits for
-the operator's approval.
+moving to Vault in phase 3. CI runs on GitHub Actions, with plans and applies
+on ephemeral self-hosted runners inside the network; every apply waits for the
+operator's approval.
 
 ## Repositories
 
