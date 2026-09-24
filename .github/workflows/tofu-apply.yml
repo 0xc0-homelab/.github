@@ -87,5 +87,24 @@ jobs:
       - name: plan
         run: sops exec-env "$SECRETS_FILE" 'tofu -chdir="$ROOT" plan -no-color -out=tfplan'
 
+      # A self-hosted runner never applies a plan that deletes or replaces its
+      # own VM: the job would die mid-apply and leave the state locked. That
+      # apply runs from the laptop. On GitHub's runners the hostname matches no
+      # VM, so this never fires there.
+      - name: guard
+        run: |
+          host="$(hostname)"
+          own="$(sops exec-env "$SECRETS_FILE" 'tofu -chdir="$ROOT" show -json tfplan' |
+            jq -r --arg host "$host" '.resource_changes[]?
+              | select(.type == "proxmox_virtual_environment_vm")
+              | select(.change.actions | index("delete"))
+              | select(.change.before.name == $host)
+              | .address')"
+          if [ -n "$own" ]; then
+            echo "::error::This plan deletes or replaces $own, the VM this runner ($host) runs on. Run this apply from the laptop, then re-run this workflow: it will plan no changes."
+            exit 1
+          fi
+          echo "The plan leaves this runner's VM ($host) alone."
+
       - name: apply
         run: sops exec-env "$SECRETS_FILE" 'tofu -chdir="$ROOT" apply -no-color tfplan'
