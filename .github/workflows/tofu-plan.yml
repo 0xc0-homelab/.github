@@ -104,7 +104,7 @@ jobs:
           echo "SOPS_AGE_KEY_FILE=$key_file" >> "$GITHUB_ENV"
           export SOPS_AGE_KEY_FILE="$key_file"
           sops decrypt --output-type json "$SECRETS_FILE" | jq -r '.[] | strings' |
-            while IFS= read -r line; do [ -n "$line" ] && echo "::add-mask::$line"; done
+            while IFS= read -r line; do if [ -n "$line" ]; then echo "::add-mask::$line"; fi; done
 
       - name: fmt
         if: steps.changes.outputs.tofu == 'true'
