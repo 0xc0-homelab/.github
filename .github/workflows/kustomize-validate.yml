@@ -1,0 +1,67 @@
+# Reusable: render every Kustomize component of a GitOps repo exactly as Argo
+# CD does (kustomize build --enable-helm, charts inflated from their pinned
+# versions) and validate the result against the cluster's Kubernetes version.
+# Plain manifests alongside, such as the bootstrap's Applications, are
+# validated too. The caller holds the triggers and paths.
+name: kustomize-validate
+
+on:
+  workflow_call:
+    inputs:
+      components:
+        description: Glob of component directories, each with a kustomization.yaml, relative to the repo root.
+        type: string
+        default: platform/*
+      manifests:
+        description: Directory of plain manifests to validate as they are. Empty skips it.
+        type: string
+        default: bootstrap
+      kubernetes-version:
+        description: Kubernetes version the schemas are checked against.
+        type: string
+        default: 1.36.0
+      tools:
+        description: mise tools to install, pinned in the caller's mise.toml.
+        type: string
+        default: kustomize helm kubeconform
+
+permissions:
+  contents: read
+
+jobs:
+  # Public charts and bases, no secrets: GitHub's runners, fork PRs included.
+  validate:
+    runs-on: ubuntu-latest
+    env:
+      COMPONENTS: ${{ inputs.components }}
+      MANIFESTS: ${{ inputs.manifests }}
+      KUBE_VERSION: ${{ inputs.kubernetes-version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
+        with:
+          install_args: ${{ inputs.tools }}
+
+      # CRDs have no schema here, so their objects are skipped rather than
+      # failed; everything with a schema must be valid.
+      - name: components
+        run: |
+          status=0
+          for dir in $COMPONENTS; do
+            [ -f "$dir/kustomization.yaml" ] || continue
+            echo "::group::$dir"
+            if ! kustomize build --enable-helm "$dir" > "$RUNNER_TEMP/render.yaml"; then
+              echo "::error title=$dir::kustomize build failed"
+              status=1
+            elif ! kubeconform -strict -ignore-missing-schemas -kubernetes-version "$KUBE_VERSION" -summary "$RUNNER_TEMP/render.yaml"; then
+              echo "::error title=$dir::invalid manifests"
+              status=1
+            fi
+            echo "::endgroup::"
+          done
+          exit $status
+
+      - name: manifests
+        if: inputs.manifests != ''
+        run: kubeconform -strict -ignore-missing-schemas -kubernetes-version "$KUBE_VERSION" -summary "$MANIFESTS"

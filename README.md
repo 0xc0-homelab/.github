@@ -21,6 +21,7 @@ mise.toml                  pinned tool versions
   packer.yml               reusable: validate Packer templates; rebuild them, once approved
   hook-tests.yml           reusable: run a repo's hook test cases
   ansible.yml              reusable: playbooks with --check on a PR; for real, once approved
+  kustomize-validate.yml   reusable: render each Kustomize component as Argo CD does, and validate it
   org-plan.yml             this repo: plan environments/prod on every PR
   org-apply.yml            this repo: apply it after merge, once approved
   issue.yml                this repo: run pr-issue on every PR
