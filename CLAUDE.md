@@ -15,7 +15,7 @@ into the workspace repo at exactly the path GitHub reads.
 - `modules/repository/` — the only way a repo is created. Squash-only, the
   default-branch ruleset and secret scanning are baked in there.
 - `modules/runner-group/` — the org runner group for the self-hosted runners
-  on `vm-ci`, restricted to the repos and workflows that need them.
+  on the CI VMs, restricted to the repos and workflows that need them.
 - `environments/prod/` — the root. Calls the repository module once per repo
   and the runner-group module once. The `production` Actions environment every
   apply waits on lives in the repository module, opted into per repo
@@ -57,8 +57,8 @@ readable by anyone. No secret value ever goes in here — only references.
   approval.
 - `app-*`: test→prod promotion of the same digest.
 - No organization secret in cleartext in the code. Reference it, never the value.
-- The self-hosted runner is `vm-ci` (10.10.1.10), ephemeral. Do not register
-  others.
+- The self-hosted runners live on the two CI VMs, `vm-ci-01` (10.10.1.10) and
+  `vm-ci-02` (10.10.1.20), ephemeral, two on each. Do not register others.
 - Never run `tofu apply` or `destroy`. Here least of all.
 - No work without an issue on the org project board. The PR links it
   (`Closes #N` / `Refs owner/repo#N`) or the `issue` check fails. See the

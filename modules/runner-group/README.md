@@ -1,6 +1,6 @@
 # runner-group
 
-An org runner group for the self-hosted runners on `vm-ci`, open only to the
+An org runner group for the self-hosted runners on the CI VMs, open only to the
 repositories listed. Runners outside a group land in `Default`, which every
 repo can use; this group is how they are kept to the ones that need them.
 
