@@ -18,6 +18,8 @@ mise.toml                  pinned tool versions
   tofu-plan.yml            reusable: fmt, validate, plan, comment on the PR
   tofu-apply.yml           reusable: apply inside an approval-gated environment
   pr-issue.yml             reusable: fail a PR that links no issue
+  packer.yml               reusable: validate Packer templates; rebuild them, once approved
+  hook-tests.yml           reusable: run a repo's hook test cases
   org-plan.yml             this repo: plan environments/prod on every PR
   org-apply.yml            this repo: apply it after merge, once approved
   issue.yml                this repo: run pr-issue on every PR
@@ -54,6 +56,9 @@ scripts/tofu prod plan
 ```
 
 ## Using the reusable workflows from another repo
+
+Every workflow with steps of its own lives here. A repo only holds thin
+callers: the triggers and paths, then `uses:` one of these, `@main`.
 
 ```yaml
 jobs:
