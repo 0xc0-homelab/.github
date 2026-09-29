@@ -26,7 +26,9 @@ into the workspace repo at exactly the path GitHub reads.
   and apply an OpenTofu root; `org-plan` and `org-apply` run them for this
   repo. `packer` validates and rebuilds a repo's Packer templates.
   `hook-tests` runs a repo's hook test cases. `ansible` runs a repo's
-  playbooks: with `--check --diff` on a PR, for real on a push once approved. `pr-issue` fails a PR that links
+  playbooks: with `--check --diff` on a PR, for real on a push once approved.
+  `kustomize-validate` renders each Kustomize component of a GitOps repo as
+  Argo CD does, and validates it. `pr-issue` fails a PR that links
   no issue; `issue` runs it for this repo. A reusable workflow that needs the
   network is listed in the runner group's `workflows`.
 
