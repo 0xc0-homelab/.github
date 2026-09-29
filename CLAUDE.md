@@ -20,10 +20,14 @@ into the workspace repo at exactly the path GitHub reads.
   and the runner-group module once. The `production` Actions environment every
   apply waits on lives in the repository module, opted into per repo
   (`production_environment`). State key `homelab/.github/prod.tfstate`.
-- `.github/workflows/` — `tofu-plan` and `tofu-apply` are reusable and called
-  by the other repos; `org-plan` and `org-apply` run them for this repo.
-  `pr-issue` is reusable and fails a PR that links no issue; `issue` runs it
-  for this repo.
+- `.github/workflows/` — **every workflow with steps of its own lives here, as
+  a reusable one**; the other repos only hold thin callers with their triggers
+  and paths (operator decision, 2026-09-29). `tofu-plan` and `tofu-apply` plan
+  and apply an OpenTofu root; `org-plan` and `org-apply` run them for this
+  repo. `packer` validates and rebuilds a repo's Packer templates.
+  `hook-tests` runs a repo's hook test cases. `pr-issue` fails a PR that links
+  no issue; `issue` runs it for this repo. A reusable workflow that needs the
+  network is listed in the runner group's `workflows`.
 
 Layout and naming conventions are in `README.md`, section Conventions. The
 bootstrap order is there too. Do not improvise it: the org's first apply runs

@@ -1,0 +1,26 @@
+# Reusable: run a repo's hook test cases. A guardrail that silently stops
+# blocking is worse than none, so the caller runs this on every PR that touches
+# its hooks.
+name: hook-tests
+
+on:
+  workflow_call:
+    inputs:
+      command:
+        description: The test runner to execute, relative to the repo root. It exits non-zero on any failing case.
+        type: string
+        default: plugins/homelab/hooks/tests/run.sh
+
+permissions:
+  contents: read
+
+jobs:
+  # No secrets, no network: GitHub's runners, fork PRs included.
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: cases
+        env:
+          COMMAND: ${{ inputs.command }}
+        run: '"./$COMMAND"'
