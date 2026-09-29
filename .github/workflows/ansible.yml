@@ -1,0 +1,124 @@
+# Reusable: run a repo's Ansible playbooks. On a PR, each one with --check
+# --diff, as the review; on a push to main, for real, once the operator
+# approves the environment: that approval is the human launching the run.
+# The caller holds the triggers and paths, and provides the wrapper that runs
+# ansible-playbook with the repo's secrets in the environment.
+name: ansible
+
+on:
+  workflow_call:
+    inputs:
+      playbooks:
+        description: Playbooks to run, relative to the wrapper's directory, one per line, in order.
+        type: string
+        required: true
+      wrapper:
+        description: Script that runs ansible-playbook with the secrets in its environment, relative to the repo root. Takes a playbook and ansible-playbook's arguments.
+        type: string
+        default: scripts/ansible
+      secrets-file:
+        description: SOPS-encrypted file holding the SSH key, relative to the repo root.
+        type: string
+        default: secrets/ansible.sops.yaml
+      ssh-key-path:
+        description: Path of the CI SSH private key inside secrets-file, as SOPS extracts it.
+        type: string
+        default: '["ci_ssh_private_key"]'
+      tofu-root:
+        description: OpenTofu root to initialise first, when the wrapper reads its outputs. Empty skips it.
+        type: string
+        default: ""
+      tofu-secrets-file:
+        description: SOPS-encrypted file with the secrets the OpenTofu root needs.
+        type: string
+        default: secrets/tofu.sops.yaml
+      environment:
+        description: Environment whose reviewers must approve a real run.
+        type: string
+        default: production
+      tools:
+        description: mise tools to install. Only these — a broken, unrelated tool in the repo's mise.toml must not block a run.
+        type: string
+        default: ansible opentofu sops jq uv
+      runs-on:
+        description: >-
+          Where the jobs run, as JSON. Defaults to the self-hosted runners on
+          the CI VMs, which reach every VM over SSH. A PR from a fork always
+          runs on "ubuntu-latest", never on the self-hosted ones.
+        type: string
+        default: '{"group": "homelab", "labels": "homelab"}'
+    # The only secret: the caller's CI age key.
+    secrets:
+      SOPS_AGE_KEY:
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  ansible:
+    # Fork PRs never reach the self-hosted runners: their code would run inside
+    # the network. On GitHub's runners they get no secrets and fail harmlessly.
+    runs-on: ${{ (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository) && 'ubuntu-latest' || fromJSON(inputs.runs-on) }}
+    # Only the real run waits for approval; the PR's dry run is the review.
+    environment: ${{ github.event_name == 'push' && inputs.environment || '' }}
+    # One run at a time per repo, dry or real: two touching the same VMs at
+    # once would race. A running one is never cancelled, or it leaves a VM
+    # half-configured.
+    concurrency:
+      group: ansible-${{ github.repository }}
+      cancel-in-progress: false
+    env:
+      PLAYBOOKS: ${{ inputs.playbooks }}
+      WRAPPER: ${{ inputs.wrapper }}
+      SECRETS_FILE: ${{ inputs.secrets-file }}
+      SSH_KEY_PATH: ${{ inputs.ssh-key-path }}
+      TOFU_ROOT: ${{ inputs.tofu-root }}
+      TOFU_SECRETS_FILE: ${{ inputs.tofu-secrets-file }}
+      TF_IN_AUTOMATION: "true"
+      TF_INPUT: "false"
+      ANSIBLE_FORCE_COLOR: "true"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
+        with:
+          install_args: ${{ inputs.tools }}
+
+      # The CI age key and the SSH key go to the job's temporary directory,
+      # which the runner wipes when the job ends: on a self-hosted runner, $HOME
+      # outlives the job. Every decrypted value is masked, line by line.
+      - name: secrets
+        env:
+          SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+        run: |
+          key_file="$RUNNER_TEMP/age-key.txt"
+          ( umask 077 && printf '%s\n' "$SOPS_AGE_KEY" > "$key_file" )
+          echo "SOPS_AGE_KEY_FILE=$key_file" >> "$GITHUB_ENV"
+          export SOPS_AGE_KEY_FILE="$key_file"
+          for f in "$SECRETS_FILE" ${TOFU_ROOT:+"$TOFU_SECRETS_FILE"}; do
+            sops decrypt --output-type json "$f" | jq -r '.[] | strings' |
+              while IFS= read -r line; do [ -n "$line" ] && echo "::add-mask::$line"; done
+          done
+          ssh_key="$RUNNER_TEMP/ssh-key"
+          ( umask 077 && sops decrypt --extract "$SSH_KEY_PATH" "$SECRETS_FILE" > "$ssh_key" )
+          echo "HOMELAB_SSH_KEY_FILE=$ssh_key" >> "$GITHUB_ENV"
+
+      - name: init
+        if: inputs.tofu-root != ''
+        run: sops exec-env "$TOFU_SECRETS_FILE" 'tofu -chdir="$TOFU_ROOT" init -no-color'
+
+      # In order, stopping at the first failure: a later playbook may need what
+      # an earlier one set up.
+      - name: playbooks
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = push ]; then mode=(--diff); else mode=(--check --diff); fi
+          # A for loop, not while-read: ansible-playbook reads stdin and would
+          # eat the rest of the list.
+          mapfile -t playbooks <<< "$PLAYBOOKS"
+          for playbook in "${playbooks[@]}"; do
+            [ -n "$playbook" ] || continue
+            echo "::group::$playbook ${mode[*]}"
+            "$WRAPPER" "$playbook" "${mode[@]}"
+            echo "::endgroup::"
+          done

@@ -20,6 +20,7 @@ mise.toml                  pinned tool versions
   pr-issue.yml             reusable: fail a PR that links no issue
   packer.yml               reusable: validate Packer templates; rebuild them, once approved
   hook-tests.yml           reusable: run a repo's hook test cases
+  ansible.yml              reusable: playbooks with --check on a PR; for real, once approved
   org-plan.yml             this repo: plan environments/prod on every PR
   org-apply.yml            this repo: apply it after merge, once approved
   issue.yml                this repo: run pr-issue on every PR
