@@ -52,6 +52,9 @@ jobs:
     runs-on: ubuntu-latest
     env:
       TEMPLATES_DIR: ${{ inputs.templates-dir }}
+      # packer init looks plugins up through the GitHub API: unauthenticated, a
+      # shared runner hits the rate limit and the job fails for nothing.
+      PACKER_GITHUB_API_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -87,6 +90,9 @@ jobs:
     env:
       SECRETS_FILE: ${{ inputs.secrets-file }}
       BUILD_ORDER: ${{ inputs.build-order }}
+      # packer init looks plugins up through the GitHub API: unauthenticated, a
+      # shared runner hits the rate limit and the job fails for nothing.
+      PACKER_GITHUB_API_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
