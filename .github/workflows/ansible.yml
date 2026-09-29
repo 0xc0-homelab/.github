@@ -98,7 +98,7 @@ jobs:
           export SOPS_AGE_KEY_FILE="$key_file"
           for f in "$SECRETS_FILE" ${TOFU_ROOT:+"$TOFU_SECRETS_FILE"}; do
             sops decrypt --output-type json "$f" | jq -r '.[] | strings' |
-              while IFS= read -r line; do [ -n "$line" ] && echo "::add-mask::$line"; done
+              while IFS= read -r line; do if [ -n "$line" ]; then echo "::add-mask::$line"; fi; done
           done
           ssh_key="$RUNNER_TEMP/ssh-key"
           ( umask 077 && sops decrypt --extract "$SSH_KEY_PATH" "$SECRETS_FILE" > "$ssh_key" )
