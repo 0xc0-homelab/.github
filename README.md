@@ -9,7 +9,7 @@ which GitHub shows on the organization page.
 ```
 profile/README.md          the org page: what the project is, current phase
 modules/repository/        every repo is created through this module
-modules/runner-group/      the runner group for the self-hosted runners on vm-ci
+modules/runner-group/      the runner group for the self-hosted runners on the CI VMs
 environments/prod/         root: calls the modules
 scripts/tofu               runs tofu on an environment, secrets decrypted in env
 secrets/tofu.sops.yaml     SOPS-encrypted, to the operator and this repo's CI key
@@ -72,7 +72,7 @@ jobs:
 ```
 
 No `runs-on` is needed: the job defaults to the self-hosted runners on
-`vm-ci`, and fork PRs go to `ubuntu-latest`. The runner group admits the
+the CI VMs, and fork PRs go to `ubuntu-latest`. The runner group admits the
 reusable workflows already, as they are on `main`, but only from the repos in
 `runner_group.repositories`, in `environments/prod/terraform.tfvars`: the
 caller's repo must be listed there.
@@ -143,5 +143,5 @@ ends.
 ## State
 
 RustFS at `https://s3.0xc0.cc`, bucket `tfstate`, locked with a lockfile. It is
-reachable only from inside the network: from `vm-ci`, or over WARP for local
+reachable only from inside the network: from the CI VMs, or over WARP for local
 runs. Every root in the org has its own key; roots never share a state.

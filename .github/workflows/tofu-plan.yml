@@ -28,7 +28,7 @@ on:
       runs-on:
         description: >-
           Where the job runs, as JSON. Defaults to the self-hosted runners on
-          vm-ci, inside the network. A PR from a fork always runs on
+          the CI VMs, inside the network. A PR from a fork always runs on
           "ubuntu-latest", never on the self-hosted ones.
         type: string
         default: '{"group": "homelab", "labels": "homelab"}'

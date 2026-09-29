@@ -4,6 +4,6 @@ output "repositories" {
 }
 
 output "runner_group" {
-  description = "Name of the self-hosted runner group, for the runners on vm-ci."
+  description = "Name of the self-hosted runner group, for the runners on the CI VMs."
   value       = module.runner_group.name
 }

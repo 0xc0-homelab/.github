@@ -33,7 +33,7 @@ repositories = {
   }
 }
 
-# vm-ci's runners. Only the repos that plan and apply infrastructure use them.
+# The CI VMs' runners. Only the repos that plan and apply infrastructure use them.
 runner_group = {
   name         = "homelab"
   repositories = [".github", "infrastructure"]

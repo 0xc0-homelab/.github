@@ -25,7 +25,7 @@ on:
       runs-on:
         description: >-
           Where the job runs, as JSON. Defaults to the self-hosted runners on
-          vm-ci, inside the network.
+          the CI VMs, inside the network.
         type: string
         default: '{"group": "homelab", "labels": "homelab"}'
     # The only secret: this repo's CI age key. Everything else is decrypted from
