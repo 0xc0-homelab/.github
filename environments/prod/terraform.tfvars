@@ -37,13 +37,11 @@ repositories = {
 runner_group = {
   name         = "homelab"
   repositories = [".github", "infrastructure"]
-  # The reusable workflows that need the network, as they are on main. The
-  # infrastructure entry is the Packer build from before it moved here; it goes
-  # once its caller uses the reusable one (0xc0-homelab/.github#40).
+  # The reusable workflows that need the network, as they are on main.
   workflows = [
+    "0xc0-homelab/.github/.github/workflows/ansible.yml@refs/heads/main",
     "0xc0-homelab/.github/.github/workflows/packer.yml@refs/heads/main",
     "0xc0-homelab/.github/.github/workflows/tofu-plan.yml@refs/heads/main",
     "0xc0-homelab/.github/.github/workflows/tofu-apply.yml@refs/heads/main",
-    "0xc0-homelab/infrastructure/.github/workflows/packer.yml@refs/heads/main",
   ]
 }
