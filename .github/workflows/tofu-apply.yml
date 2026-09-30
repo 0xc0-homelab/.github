@@ -28,6 +28,14 @@ on:
           the CI VMs, inside the network.
         type: string
         default: '{"group": "homelab", "labels": "homelab"}'
+      vault-addr:
+        description: Vault's address, for a root whose provider talks to Vault. Empty, the job does not log in to Vault.
+        type: string
+        default: ""
+      vault-role:
+        description: Vault JWT auth role the job logs in with, through GitHub's OIDC token. Required with vault-addr.
+        type: string
+        default: ""
     # The only secret: this repo's CI age key. Everything else is decrypted from
     # secrets-file, so each repo's CI can read only its own secrets.
     secrets:
@@ -41,8 +49,11 @@ jobs:
     # On GitHub's runners they get no secrets and fail harmlessly.
     runs-on: ${{ (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository) && 'ubuntu-latest' || fromJSON(inputs.runs-on) }}
     environment: ${{ inputs.environment }}
+    # id-token: the OIDC token a Vault login presents. The caller must grant it
+    # too, even when it does not use Vault.
     permissions:
       contents: read
+      id-token: write
     # Applies to the same root queue up, oldest first; a running apply is never
     # cancelled. Only one run can wait in the queue: a third merge replaces the
     # waiting one, which is safe because main is linear and the newer commit
@@ -59,6 +70,7 @@ jobs:
       TF_CLI_ARGS_apply: "-lock-timeout=10m"
       ROOT: ${{ inputs.working-directory }}
       SECRETS_FILE: ${{ inputs.secrets-file }}
+      VAULT_ADDR: ${{ inputs.vault-addr }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -80,6 +92,21 @@ jobs:
           export SOPS_AGE_KEY_FILE="$key_file"
           sops decrypt --output-type json "$SECRETS_FILE" | jq -r '.[] | strings' |
             while IFS= read -r line; do if [ -n "$line" ]; then echo "::add-mask::$line"; fi; done
+
+      # Vault: log in with this job's GitHub OIDC token (JWT auth). Vault checks
+      # the token's repository and ref against the role; no Vault credential is
+      # stored anywhere. VAULT_TOKEN lands in the job's environment, masked,
+      # and expires with the role's TTL.
+      - name: vault
+        if: inputs.vault-addr != ''
+        uses: hashicorp/vault-action@892a26828f195e65540a40b4768ae4571f51ebfc # v4.0.0
+        with:
+          url: ${{ inputs.vault-addr }}
+          method: jwt
+          path: jwt
+          role: ${{ inputs.vault-role }}
+          jwtGithubAudience: ${{ inputs.vault-addr }}
+          exportToken: true
 
       - name: init
         run: sops exec-env "$SECRETS_FILE" 'tofu -chdir="$ROOT" init -no-color'

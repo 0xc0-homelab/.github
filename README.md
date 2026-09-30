@@ -63,6 +63,13 @@ Every workflow with steps of its own lives here. A repo only holds thin
 callers: the triggers and paths, then `uses:` one of these, `@main`.
 
 ```yaml
+# tofu-plan and its sibling ask for id-token: the caller must grant it, even
+# when it does not use Vault.
+permissions:
+  contents: read
+  pull-requests: write
+  id-token: write
+
 jobs:
   plan:
     uses: 0xc0-homelab/.github/.github/workflows/tofu-plan.yml@main
@@ -83,6 +90,12 @@ else a root needs — provider credentials, the RustFS state keys — lives in t
 repo's `secrets/tofu.sops.yaml`, encrypted to the operator and to that CI key.
 The workflows decrypt it with `sops exec-env` and mask every decrypted value in
 the logs. Override the path with the `secrets-file` input.
+
+A root whose provider talks to Vault passes `vault-addr` and `vault-role`. The
+job then logs in to Vault with its GitHub OIDC token (JWT auth, through
+`hashicorp/vault-action`) and runs with `VAULT_ADDR` and `VAULT_TOKEN` set. No
+Vault credential is stored: Vault's role checks the token's repository and ref.
+Today only `vault` does.
 
 A repo whose applies run from CI needs `production_environment = true` in
 `environments/prod/terraform.tfvars`: that creates the approval-gated

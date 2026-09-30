@@ -15,8 +15,10 @@ on:
       - '.github/workflows/org-*.yml'
   workflow_dispatch:
 
+# id-token: tofu-apply asks for it (Vault logins); this root does not use it.
 permissions:
   contents: read
+  id-token: write
 
 jobs:
   apply:
