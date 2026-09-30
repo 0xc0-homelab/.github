@@ -31,12 +31,24 @@ repositories = {
     topics          = ["argocd", "homelab"]
     required_checks = ["issue / check"]
   }
+  # Vault's configuration as OpenTofu: auth methods, policies, secret engines.
+  # Downstream of gitops, which deploys Vault. Its CI logs in to Vault with
+  # GitHub's OIDC token (JWT auth). "plan / tofu" becomes required once it has
+  # run once.
+  "vault" = {
+    description            = "OpenTofu configuration of the cluster's Vault"
+    topics                 = ["homelab", "opentofu", "vault"]
+    auto_init              = true
+    production_environment = true
+    required_checks        = ["issue / check"]
+  }
 }
 
-# The CI VMs' runners. Only the repos that plan and apply infrastructure use them.
+# The CI VMs' runners. Only the repos that plan and apply infrastructure use
+# them; vault reaches the cluster's Vault from there.
 runner_group = {
   name         = "homelab"
-  repositories = [".github", "infrastructure"]
+  repositories = [".github", "infrastructure", "vault"]
   # The reusable workflows that need the network, as they are on main.
   workflows = [
     "0xc0-homelab/.github/.github/workflows/ansible.yml@refs/heads/main",
