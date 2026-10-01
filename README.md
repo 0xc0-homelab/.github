@@ -18,9 +18,9 @@ mise.toml                  pinned tool versions
   tofu-plan.yml            reusable: fmt, validate, plan, comment on the PR
   tofu-apply.yml           reusable: apply inside an approval-gated environment
   pr-issue.yml             reusable: fail a PR that links no issue
-  packer.yml               reusable: validate Packer templates; rebuild the affected ones, once approved
+  packer.yml               reusable: validate Packer templates; rebuild the affected ones, a job per chain, once approved
   hook-tests.yml           reusable: run a repo's hook test cases
-  ansible.yml              reusable: the affected playbooks, --check on a PR; for real, once approved
+  ansible.yml              reusable: the affected playbooks, in parallel; --check on a PR; for real, once approved
   kustomize-validate.yml   reusable: render each Kustomize component as Argo CD does, and validate it
   org-plan.yml             this repo: plan environments/prod on every PR
   org-apply.yml            this repo: apply it after merge, once approved

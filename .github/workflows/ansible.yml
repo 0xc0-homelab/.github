@@ -1,5 +1,6 @@
-# Reusable: run a repo's Ansible playbooks. On a PR, each one with --check
-# --diff, as the review; on a push to main, for real, once the operator
+# Reusable: run a repo's Ansible playbooks, the ones the change affects, each
+# in a job of its own, in parallel. On a PR, each one with --check --diff, as
+# the review; on a push to main, for real, once the operator
 # approves the environment: that approval is the human launching the run.
 # The caller holds the triggers and paths, and provides the wrapper that runs
 # ansible-playbook with the repo's secrets in the environment.
@@ -9,13 +10,19 @@ on:
   workflow_call:
     inputs:
       playbooks:
-        description: Playbooks to run, relative to ansible-dir, one per line, in order. Only those the change affects run.
+        description: Playbooks to run, relative to ansible-dir, one per line. Only those the change affects run, each in its own job.
         type: string
         required: true
       wrapper:
         description: Script that runs ansible-playbook with the secrets in its environment, relative to the repo root. Takes a playbook and ansible-playbook's arguments.
         type: string
         default: scripts/ansible
+      max-parallel:
+        description: >-
+          How many playbooks run at once. A repo whose playbooks need what an
+          earlier one set up passes 1: they then run in the listed order.
+        type: number
+        default: 10
       ansible-dir:
         description: Directory holding playbooks/ and roles/, relative to the repo root, where the wrapper runs them.
         type: string
@@ -139,25 +146,33 @@ jobs:
             if [ "$all" = 1 ] || [ -n "${hit[$p]:-}" ]; then selected+=("$p"); fi
           done
           if [ "${#selected[@]}" = 0 ]; then echo "No playbook is affected by this change."; else printf 'Runs: %s\n' "${selected[@]}"; fi
-          { echo "playbooks<<EOF"; [ "${#selected[@]}" = 0 ] || printf '%s\n' "${selected[@]}"; echo "EOF"; } >> "$GITHUB_OUTPUT"
+          # A JSON array, in the listed order: the matrix of the next job.
+          echo "playbooks=$(printf '%s\n' "${selected[@]}" | jq -Rsc 'split("\n") | map(select(. != ""))')" >> "$GITHUB_OUTPUT"
 
   ansible:
     needs: select
     # Nothing affected: no run, and no approval asked for.
-    if: needs.select.outputs.playbooks != ''
+    if: needs.select.outputs.playbooks != '[]'
+    # One job per playbook. A failure does not stop the others: each playbook
+    # holds its own hosts.
+    strategy:
+      fail-fast: false
+      max-parallel: ${{ inputs.max-parallel }}
+      matrix:
+        playbook: ${{ fromJSON(needs.select.outputs.playbooks) }}
     # Fork PRs never reach the self-hosted runners: their code would run inside
     # the network. On GitHub's runners they get no secrets and fail harmlessly.
     runs-on: ${{ (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository) && 'ubuntu-latest' || fromJSON(inputs.runs-on) }}
     # Only the real run waits for approval; the PR's dry run is the review.
     environment: ${{ github.event_name == 'push' && inputs.environment || '' }}
-    # One run at a time per repo, dry or real: two touching the same VMs at
+    # One run at a time per playbook, dry or real: two touching the same VMs at
     # once would race. A running one is never cancelled, or it leaves a VM
     # half-configured.
     concurrency:
-      group: ansible-${{ github.repository }}
+      group: ansible-${{ github.repository }}-${{ matrix.playbook }}
       cancel-in-progress: false
     env:
-      PLAYBOOKS: ${{ needs.select.outputs.playbooks }}
+      PLAYBOOK: ${{ matrix.playbook }}
       WRAPPER: ${{ inputs.wrapper }}
       SECRETS_FILE: ${{ inputs.secrets-file }}
       SSH_KEY_PATH: ${{ inputs.ssh-key-path }}
@@ -234,17 +249,8 @@ jobs:
             tofu -chdir="$TOFU_ROOT" init -no-color
           fi
 
-      # In order, stopping at the first failure: a later playbook may need what
-      # an earlier one set up.
-      - name: playbooks
+      - name: playbook
         run: |
           if [ "$GITHUB_EVENT_NAME" = push ]; then mode=(--diff); else mode=(--check --diff); fi
-          # A for loop, not while-read: ansible-playbook reads stdin and would
-          # eat the rest of the list.
-          mapfile -t playbooks <<< "$PLAYBOOKS"
-          for playbook in "${playbooks[@]}"; do
-            [ -n "$playbook" ] || continue
-            echo "::group::$playbook ${mode[*]}"
-            "$WRAPPER" "$playbook" "${mode[@]}"
-            echo "::endgroup::"
-          done
+          echo "$PLAYBOOK ${mode[*]}"
+          "$WRAPPER" "$PLAYBOOK" "${mode[@]}"

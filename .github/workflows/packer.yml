@@ -108,7 +108,7 @@ jobs:
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     outputs:
-      templates: ${{ steps.select.outputs.templates }}
+      chains: ${{ steps.select.outputs.chains }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -149,32 +149,55 @@ jobs:
           done <<< "${changed:-}"
           # A template cloning a rebuilt one is rebuilt after it: the build
           # order lists each after the one it clones, so one pass is enough.
-          selected=()
+          # Its chain is its root's: the template that clones nothing in the
+          # build order.
+          declare -A root=() chain=()
+          roots=()
           for t in "${order[@]}"; do
             src="$(sed -nE 's/^[[:space:]]*clone_vm[[:space:]]*=[[:space:]]*"([^"]+)".*/\1/p' "$TEMPLATES_DIR/$t"/*.pkr.hcl | head -n1)"
             if [ -n "$src" ] && [ -n "${hit[$src]:-}" ]; then hit["$t"]=1; fi
-            if [ "$all" = 1 ] || [ -n "${hit[$t]:-}" ]; then selected+=("$t"); fi
+            if [ -n "$src" ] && [ -n "${root[$src]:-}" ]; then root["$t"]="${root[$src]}"; else root["$t"]="$t"; fi
+            if [ "$all" = 1 ] || [ -n "${hit[$t]:-}" ]; then
+              r="${root[$t]}"
+              if [ -z "${chain[$r]:-}" ]; then roots+=("$r"); fi
+              chain["$r"]="${chain[$r]:+${chain[$r]} }$t"
+            fi
           done
-          if [ "${#selected[@]}" = 0 ]; then echo "No template is affected by this change."; else printf 'Rebuilds: %s\n' "${selected[@]}"; fi
-          { echo "templates<<EOF"; [ "${#selected[@]}" = 0 ] || printf '%s\n' "${selected[@]}"; echo "EOF"; } >> "$GITHUB_OUTPUT"
+          if [ "${#roots[@]}" = 0 ]; then echo "No template is affected by this change."; fi
+          # A JSON array, one chain per entry: the matrix of the build.
+          json='[]'
+          for r in "${roots[@]}"; do
+            echo "Rebuilds, in order: ${chain[$r]}"
+            json="$(jq -c --arg r "$r" --arg t "${chain[$r]}" '. + [{root: $r, templates: $t}]' <<< "$json")"
+          done
+          echo "chains=$json" >> "$GITHUB_OUTPUT"
 
   # Inside the network. The runner group admits this workflow only as it is on
   # main, and only a push runs it: a fork's PR never reaches this job. Nothing
   # affected: no build, and no approval asked for.
+  #
+  # One job per chain, in parallel: each chain's templates clone one another,
+  # in order, inside its job. Every chain needs a build address of its own (the
+  # templates' build_ip), or two builds at once would take the same one.
   build:
     needs: select
-    if: github.event_name == 'push' && needs.select.outputs.templates != ''
+    if: github.event_name == 'push' && needs.select.outputs.chains != '[]'
+    strategy:
+      fail-fast: false
+      matrix:
+        chain: ${{ fromJSON(needs.select.outputs.chains) }}
+    name: build (${{ matrix.chain.root }})
     runs-on: ${{ fromJSON(inputs.runs-on) }}
     environment: ${{ inputs.environment }}
     timeout-minutes: 60
-    # One build at a time; a running one is never cancelled, or it leaves a
-    # half-built VM behind.
+    # One build at a time per chain, which holds its build address; a running
+    # one is never cancelled, or it leaves a half-built VM behind.
     concurrency:
-      group: packer-${{ github.repository }}
+      group: packer-${{ github.repository }}-${{ matrix.chain.root }}
       cancel-in-progress: false
     env:
       SECRETS_FILE: ${{ inputs.secrets-file }}
-      TEMPLATES: ${{ needs.select.outputs.templates }}
+      TEMPLATES: ${{ matrix.chain.templates }}
       VAULT_ADDR: ${{ inputs.vault-addr }}
       SOPS_ENABLED: ${{ secrets.SOPS_AGE_KEY != '' }}
       # packer init looks plugins up through the GitHub API: unauthenticated, a
