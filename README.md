@@ -12,7 +12,6 @@ modules/repository/        every repo is created through this module
 modules/runner-group/      the runner group for the self-hosted runners on the CI VMs
 environments/prod/         root: calls the modules
 scripts/tofu               runs tofu on an environment, secrets decrypted in env
-secrets/tofu.sops.yaml     SOPS-encrypted, to the operator and this repo's CI key
 mise.toml                  pinned tool versions
 .github/workflows/
   tofu-plan.yml            reusable: fmt, validate, plan, comment on the PR
