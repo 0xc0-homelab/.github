@@ -47,13 +47,37 @@ on:
           runs on "ubuntu-latest", never on the self-hosted ones.
         type: string
         default: '{"group": "homelab", "labels": "homelab"}'
-    # The only secret: the caller's CI age key.
+      vault-addr:
+        description: Vault's address. Empty, the job does not log in to Vault.
+        type: string
+        default: ""
+      vault-role:
+        description: Vault JWT auth role the job logs in with, through GitHub's OIDC token. Required with vault-addr.
+        type: string
+        default: ""
+      vault-secrets:
+        description: >-
+          The secrets the job reads from Vault once logged in, in
+          hashicorp/vault-action's format ("<path> <key> | <ENV_VAR>;" per
+          line): each lands in the job's environment, masked. With it, the
+          repo needs no SOPS file.
+        type: string
+        default: ""
+      ssh-key-env:
+        description: With the secrets in Vault, the environment variable (one of vault-secrets) that holds the CI SSH private key. Empty, the key comes from secrets-file.
+        type: string
+        default: ""
+    # The caller's CI age key, while its secrets are still in SOPS. A repo whose
+    # secrets are all in Vault passes none, and the SOPS steps are skipped.
     secrets:
       SOPS_AGE_KEY:
-        required: true
+        required: false
 
+# id-token: the OIDC token a Vault login presents. The caller must grant it
+# too, even when it does not use Vault.
 permissions:
   contents: read
+  id-token: write
 
 jobs:
   ansible:
@@ -75,6 +99,9 @@ jobs:
       SSH_KEY_PATH: ${{ inputs.ssh-key-path }}
       TOFU_ROOT: ${{ inputs.tofu-root }}
       TOFU_SECRETS_FILE: ${{ inputs.tofu-secrets-file }}
+      VAULT_ADDR: ${{ inputs.vault-addr }}
+      SSH_KEY_ENV: ${{ inputs.ssh-key-env }}
+      SOPS_ENABLED: ${{ secrets.SOPS_AGE_KEY != '' }}
       TF_IN_AUTOMATION: "true"
       TF_INPUT: "false"
       ANSIBLE_FORCE_COLOR: "true"
@@ -85,10 +112,27 @@ jobs:
         with:
           install_args: ${{ inputs.tools }}
 
-      # The CI age key and the SSH key go to the job's temporary directory,
-      # which the runner wipes when the job ends: on a self-hosted runner, $HOME
-      # outlives the job. Every decrypted value is masked, line by line.
-      - name: secrets
+      # Vault: log in with this job's GitHub OIDC token (JWT auth), and read
+      # vault-secrets into the job's environment, masked. No Vault credential is
+      # stored anywhere.
+      - name: vault
+        if: inputs.vault-addr != ''
+        uses: hashicorp/vault-action@892a26828f195e65540a40b4768ae4571f51ebfc # v4.0.0
+        with:
+          url: ${{ inputs.vault-addr }}
+          method: jwt
+          path: jwt
+          role: ${{ inputs.vault-role }}
+          jwtGithubAudience: ${{ inputs.vault-addr }}
+          exportToken: true
+          secrets: ${{ inputs.vault-secrets }}
+
+      # While the caller's secrets are in SOPS: the CI age key goes to the job's
+      # temporary directory, which the runner wipes when the job ends (on a
+      # self-hosted runner, $HOME outlives the job), and every decrypted value
+      # is masked, line by line.
+      - name: sops
+        if: env.SOPS_ENABLED == 'true'
         env:
           SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
         run: |
@@ -100,8 +144,16 @@ jobs:
             sops decrypt --output-type json "$f" | jq -r '.[] | strings' |
               while IFS= read -r line; do if [ -n "$line" ]; then echo "::add-mask::$line"; fi; done
           done
+
+      # The SSH key, from Vault or from SOPS, to the job's temporary directory.
+      - name: ssh
+        run: |
           ssh_key="$RUNNER_TEMP/ssh-key"
-          ( umask 077 && sops decrypt --extract "$SSH_KEY_PATH" "$SECRETS_FILE" > "$ssh_key" )
+          if [ -n "$SSH_KEY_ENV" ]; then
+            ( umask 077 && printf '%s\n' "${!SSH_KEY_ENV}" > "$ssh_key" )
+          else
+            ( umask 077 && sops decrypt --extract "$SSH_KEY_PATH" "$SECRETS_FILE" > "$ssh_key" )
+          fi
           echo "HOMELAB_SSH_KEY_FILE=$ssh_key" >> "$GITHUB_ENV"
           # Host keys, fresh for every job: a VM rebuilt under the same address
           # gets a new one, and a known_hosts kept in the runner's $HOME would
@@ -111,7 +163,12 @@ jobs:
 
       - name: init
         if: inputs.tofu-root != ''
-        run: sops exec-env "$TOFU_SECRETS_FILE" 'tofu -chdir="$TOFU_ROOT" init -no-color'
+        run: |
+          if [ -n "${SOPS_AGE_KEY_FILE:-}" ]; then
+            sops exec-env "$TOFU_SECRETS_FILE" 'tofu -chdir="$TOFU_ROOT" init -no-color'
+          else
+            tofu -chdir="$TOFU_ROOT" init -no-color
+          fi
 
       # In order, stopping at the first failure: a later playbook may need what
       # an earlier one set up.
