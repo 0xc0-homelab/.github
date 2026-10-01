@@ -8,7 +8,7 @@ on:
   pull_request:
     branches: [main]
 
-# id-token: tofu-plan asks for it (Vault logins); this root does not use it.
+# id-token: the job logs in to Vault with GitHub's OIDC token.
 permissions:
   contents: read
   pull-requests: write
@@ -25,5 +25,13 @@ jobs:
       runs-on: '{"group": "homelab", "labels": "homelab"}'
       # Also re-plan when the tofu workflows themselves change.
       paths: '^(environments/|modules/|mise\.toml$|\.github/workflows/(tofu|org)-)'
-    secrets:
-      SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+      # Every secret from Vault (ci/github/*, ci/shared/rustfs), with GitHub's
+      # OIDC token: this repo has no SOPS file.
+      vault-addr: https://vault.int.0xc0.cc
+      vault-role: github
+      vault-secrets: |
+        ci/data/github/org-app app_id | TF_VAR_github_app_id ;
+        ci/data/github/org-app installation_id | TF_VAR_github_app_installation_id ;
+        ci/data/github/org-app private_key | TF_VAR_github_app_private_key ;
+        ci/data/shared/rustfs access_key_id | AWS_ACCESS_KEY_ID ;
+        ci/data/shared/rustfs secret_access_key | AWS_SECRET_ACCESS_KEY ;
