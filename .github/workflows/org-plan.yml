@@ -26,7 +26,7 @@ jobs:
       # Also re-plan when the tofu workflows themselves change.
       paths: '^(environments/|modules/|mise\.toml$|\.github/workflows/(tofu|org)-)'
       # Every secret from Vault (ci/github/*, ci/shared/rustfs), with GitHub's
-      # OIDC token: this repo has no SOPS file.
+      # OIDC token.
       vault-addr: https://vault.int.0xc0.cc
       vault-role: github
       vault-secrets: |
