@@ -97,6 +97,28 @@ job then logs in to Vault with its GitHub OIDC token (JWT auth, through
 Vault credential is stored: Vault's role checks the token's repository and ref.
 Today only `vault` does.
 
+**Secrets from Vault, instead of SOPS** (operator decision, 2026-10-01: every
+secret moves to Vault). Every reusable workflow that needs secrets (the tofu
+ones, `ansible` and `packer`) takes a `vault-secrets` input in
+`hashicorp/vault-action`'s format, one `<path> <key> | <ENV_VAR>;` per secret.
+Each lands in the job's environment, masked, under the name the code already
+reads:
+
+```yaml
+    with:
+      vault-addr: https://vault.int.0xc0.cc
+      vault-role: infrastructure
+      vault-secrets: |
+        ci/data/shared/rustfs access_key_id | AWS_ACCESS_KEY_ID ;
+        ci/data/shared/rustfs secret_access_key | AWS_SECRET_ACCESS_KEY ;
+```
+
+A caller that reads everything from Vault passes no `SOPS_AGE_KEY`, and the
+SOPS steps are skipped; one that still passes it keeps decrypting its
+`secrets-file`, so each repo moves on its own. `ansible` takes the CI SSH key
+from the variable `ssh-key-env` names. All of them now ask for
+`id-token: write`, which every caller must grant.
+
 A repo whose applies run from CI needs `production_environment = true` in
 `environments/prod/terraform.tfvars`: that creates the approval-gated
 environment the apply workflow waits on.

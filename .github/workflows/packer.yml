@@ -36,13 +36,33 @@ on:
           the CI VMs: the build VM is reached over SSH inside the network.
         type: string
         default: '{"group": "homelab", "labels": "homelab"}'
-    # The only secret: the caller's CI age key.
+      vault-addr:
+        description: Vault's address. Empty, the job does not log in to Vault.
+        type: string
+        default: ""
+      vault-role:
+        description: Vault JWT auth role the job logs in with, through GitHub's OIDC token. Required with vault-addr.
+        type: string
+        default: ""
+      vault-secrets:
+        description: >-
+          The secrets the job reads from Vault once logged in, in
+          hashicorp/vault-action's format ("<path> <key> | <ENV_VAR>;" per
+          line): each lands in the job's environment, masked. With it, the
+          repo needs no SOPS file.
+        type: string
+        default: ""
+    # The caller's CI age key, while its secrets are still in SOPS. A repo whose
+    # secrets are all in Vault passes none, and the SOPS steps are skipped.
     secrets:
       SOPS_AGE_KEY:
-        required: true
+        required: false
 
+# id-token: the OIDC token a Vault login presents. The caller must grant it
+# too, even when it does not use Vault.
 permissions:
   contents: read
+  id-token: write
 
 jobs:
   # No secrets and no network beyond the plugin downloads: GitHub's runners,
@@ -90,6 +110,8 @@ jobs:
     env:
       SECRETS_FILE: ${{ inputs.secrets-file }}
       BUILD_ORDER: ${{ inputs.build-order }}
+      VAULT_ADDR: ${{ inputs.vault-addr }}
+      SOPS_ENABLED: ${{ secrets.SOPS_AGE_KEY != '' }}
       # packer init looks plugins up through the GitHub API: unauthenticated, a
       # shared runner hits the rate limit and the job fails for nothing.
       PACKER_GITHUB_API_TOKEN: ${{ github.token }}
@@ -100,9 +122,31 @@ jobs:
         with:
           install_args: ${{ inputs.tools }}
 
-      # The CI key in the job's temporary directory, and every decrypted value
-      # masked, as in tofu-plan.
+      # Vault: log in with this job's GitHub OIDC token, and read vault-secrets
+      # into the job's environment, masked.
+      - name: vault
+        if: inputs.vault-addr != ''
+        uses: hashicorp/vault-action@892a26828f195e65540a40b4768ae4571f51ebfc # v4.0.0
+        with:
+          url: ${{ inputs.vault-addr }}
+          method: jwt
+          path: jwt
+          role: ${{ inputs.vault-role }}
+          jwtGithubAudience: ${{ inputs.vault-addr }}
+          exportToken: true
+          secrets: ${{ inputs.vault-secrets }}
+
+      # The token's secret half is masked on its own: the whole token is, but
+      # scripts/packer passes only that half to Packer.
+      - name: mask
+        if: inputs.vault-addr != ''
+        run: |
+          if [ -n "${PROXMOX_VE_API_TOKEN:-}" ]; then echo "::add-mask::${PROXMOX_VE_API_TOKEN#*=}"; fi
+
+      # While the caller's secrets are in SOPS: the CI key in the job's
+      # temporary directory, and every decrypted value masked, as in tofu-plan.
       - name: secrets
+        if: env.SOPS_ENABLED == 'true'
         env:
           SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
         run: |
