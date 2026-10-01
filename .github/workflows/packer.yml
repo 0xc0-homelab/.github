@@ -1,6 +1,8 @@
-# Reusable: validate a repo's Packer templates on a PR, and rebuild them all on
-# a push to main once the operator approves the environment. A rebuild deletes
-# each template by name and builds it again, in the build-order file. VMs are
+# Reusable: validate a repo's Packer templates on a PR, and rebuild the ones a
+# push to main affects once the operator approves the environment: a template
+# whose directory or baked role changed, and every template cloning one rebuilt.
+# A rebuild deletes each template by name and builds it again, in the
+# build-order file. VMs are
 # full clones: none changes until it is rebuilt with its `rebuild` counter.
 #
 # The caller holds the triggers and paths, and provides the two scripts the
@@ -18,6 +20,10 @@ on:
         description: File listing the templates to build, one per line, each after the one it clones.
         type: string
         default: packer/build-order
+      roles-dir:
+        description: Directory of the Ansible roles the templates' playbook.yml bake, relative to the repo root.
+        type: string
+        default: ansible/roles
       environment:
         description: Environment whose reviewers must approve a rebuild.
         type: string
@@ -95,10 +101,69 @@ jobs:
             packer validate "$t"
           done
 
-  # Inside the network. The runner group admits this workflow only as it is on
-  # main, and only a push runs it: a fork's PR never reaches this job.
-  build:
+  # The templates the push affects. Anything changed outside a template's
+  # directory and the roles (the build order, the scripts, the caller, the
+  # tools) rebuilds them all. No secrets: GitHub's runners.
+  select:
     if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    outputs:
+      templates: ${{ steps.select.outputs.templates }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: select
+        id: select
+        env:
+          EVENT: ${{ github.event_name }}
+          BEFORE: ${{ github.event.before }}
+          TEMPLATES_DIR: ${{ inputs.templates-dir }}
+          ROLES_DIR: ${{ inputs.roles-dir }}
+          BUILD_ORDER: ${{ inputs.build-order }}
+        run: |
+          # The changed files since the push's previous head. Without one, or
+          # run by hand, every template is rebuilt.
+          all=1
+          if [ "$EVENT" = push ] && [ -n "$BEFORE" ] && [ "${BEFORE//0/}" != "" ] && git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+            changed="$(git diff --name-only "$BEFORE" "$GITHUB_SHA")"; all=0
+          fi
+          mapfile -t order < <(grep -vE '^(#|$)' "$BUILD_ORDER")
+          declare -A hit=()
+          while IFS= read -r f; do
+            [ "$all" = 0 ] || break
+            [ -n "$f" ] || continue
+            case "$f" in
+              "$TEMPLATES_DIR"/*/*)
+                t="${f#"$TEMPLATES_DIR"/}"; hit["${t%%/*}"]=1 ;;
+              "$ROLES_DIR"/*/*)
+                # Every template whose playbook bakes the role.
+                role="${f#"$ROLES_DIR"/}"; role="${role%%/*}"
+                for t in "${order[@]}"; do
+                  if grep -Eq "^[[:space:]-]*(role|name):[[:space:]]*[\"']?$role[\"']?[[:space:]]*$" "$TEMPLATES_DIR/$t/playbook.yml"; then hit["$t"]=1; fi
+                done ;;
+              # The build order, the scripts, the caller, the tools: all of them.
+              *) all=1 ;;
+            esac
+          done <<< "${changed:-}"
+          # A template cloning a rebuilt one is rebuilt after it: the build
+          # order lists each after the one it clones, so one pass is enough.
+          selected=()
+          for t in "${order[@]}"; do
+            src="$(sed -nE 's/^[[:space:]]*clone_vm[[:space:]]*=[[:space:]]*"([^"]+)".*/\1/p' "$TEMPLATES_DIR/$t"/*.pkr.hcl | head -n1)"
+            if [ -n "$src" ] && [ -n "${hit[$src]:-}" ]; then hit["$t"]=1; fi
+            if [ "$all" = 1 ] || [ -n "${hit[$t]:-}" ]; then selected+=("$t"); fi
+          done
+          if [ "${#selected[@]}" = 0 ]; then echo "No template is affected by this change."; else printf 'Rebuilds: %s\n' "${selected[@]}"; fi
+          { echo "templates<<EOF"; [ "${#selected[@]}" = 0 ] || printf '%s\n' "${selected[@]}"; echo "EOF"; } >> "$GITHUB_OUTPUT"
+
+  # Inside the network. The runner group admits this workflow only as it is on
+  # main, and only a push runs it: a fork's PR never reaches this job. Nothing
+  # affected: no build, and no approval asked for.
+  build:
+    needs: select
+    if: github.event_name == 'push' && needs.select.outputs.templates != ''
     runs-on: ${{ fromJSON(inputs.runs-on) }}
     environment: ${{ inputs.environment }}
     timeout-minutes: 60
@@ -109,7 +174,7 @@ jobs:
       cancel-in-progress: false
     env:
       SECRETS_FILE: ${{ inputs.secrets-file }}
-      BUILD_ORDER: ${{ inputs.build-order }}
+      TEMPLATES: ${{ needs.select.outputs.templates }}
       VAULT_ADDR: ${{ inputs.vault-addr }}
       SOPS_ENABLED: ${{ secrets.SOPS_AGE_KEY != '' }}
       # packer init looks plugins up through the GitHub API: unauthenticated, a
@@ -165,7 +230,7 @@ jobs:
         run: |
           # A for loop, not while-read: a command in the loop reading stdin
           # would eat the rest of the list.
-          for name in $(grep -vE '^(#|$)' "$BUILD_ORDER"); do
+          for name in $TEMPLATES; do
             echo "::group::$name"
             scripts/delete-template "$name"
             scripts/packer "$name" init

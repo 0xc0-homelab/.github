@@ -24,9 +24,11 @@ into the workspace repo at exactly the path GitHub reads.
   a reusable one**; the other repos only hold thin callers with their triggers
   and paths (operator decision, 2026-09-29). `tofu-plan` and `tofu-apply` plan
   and apply an OpenTofu root; `org-plan` and `org-apply` run them for this
-  repo. `packer` validates and rebuilds a repo's Packer templates.
+  repo. `packer` validates a repo's Packer templates, and rebuilds the ones a
+  push affects.
   `hook-tests` runs a repo's hook test cases. `ansible` runs a repo's
-  playbooks: with `--check --diff` on a PR, for real on a push once approved.
+  playbooks the change affects: with `--check --diff` on a PR, for real on a
+  push once approved.
   `kustomize-validate` renders each Kustomize component of a GitOps repo as
   Argo CD does, and validates it. `pr-issue` fails a PR that links
   no issue; `issue` runs it for this repo. A reusable workflow that needs the

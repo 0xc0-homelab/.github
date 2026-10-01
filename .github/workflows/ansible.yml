@@ -9,13 +9,17 @@ on:
   workflow_call:
     inputs:
       playbooks:
-        description: Playbooks to run, relative to the wrapper's directory, one per line, in order.
+        description: Playbooks to run, relative to ansible-dir, one per line, in order. Only those the change affects run.
         type: string
         required: true
       wrapper:
         description: Script that runs ansible-playbook with the secrets in its environment, relative to the repo root. Takes a playbook and ansible-playbook's arguments.
         type: string
         default: scripts/ansible
+      ansible-dir:
+        description: Directory holding playbooks/ and roles/, relative to the repo root, where the wrapper runs them.
+        type: string
+        default: ansible
       secrets-file:
         description: SOPS-encrypted file holding the SSH key, relative to the repo root.
         type: string
@@ -80,7 +84,67 @@ permissions:
   id-token: write
 
 jobs:
+  # Only the playbooks the change affects: the playbook itself, or one naming a
+  # changed role. Anything else changed (inventory, configuration, the wrapper,
+  # the caller) runs them all. No secrets: GitHub's runners.
+  select:
+    runs-on: ubuntu-latest
+    outputs:
+      playbooks: ${{ steps.select.outputs.playbooks }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: select
+        id: select
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+          BEFORE: ${{ github.event.before }}
+          PLAYBOOKS: ${{ inputs.playbooks }}
+          ANSIBLE_DIR: ${{ inputs.ansible-dir }}
+        run: |
+          # The changed files: against the PR's base, or since the push's
+          # previous head. Without one, every playbook runs.
+          all=1
+          if [ "$EVENT" = pull_request ]; then
+            changed="$(git diff --name-only "origin/$BASE_REF...HEAD")"; all=0
+          elif [ -n "$BEFORE" ] && [ "${BEFORE//0/}" != "" ] && git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+            changed="$(git diff --name-only "$BEFORE" "$GITHUB_SHA")"; all=0
+          fi
+          mapfile -t playbooks < <(printf '%s\n' "$PLAYBOOKS" | grep -v '^$')
+          declare -A hit=()
+          while IFS= read -r f; do
+            [ "$all" = 0 ] || break
+            [ -n "$f" ] || continue
+            case "$f" in
+              "$ANSIBLE_DIR"/playbooks/*)
+                # A playbook outside the list runs nowhere here.
+                hit["${f#"$ANSIBLE_DIR"/}"]=1 ;;
+              "$ANSIBLE_DIR"/roles/*/*)
+                # Every playbook naming the role, as a role or an include.
+                # Roles carry no meta dependencies; one that does would need
+                # its dependants found here too.
+                role="${f#"$ANSIBLE_DIR"/roles/}"; role="${role%%/*}"
+                for p in "${playbooks[@]}"; do
+                  if grep -Eq "^[[:space:]-]*(role|name):[[:space:]]*[\"']?$role[\"']?[[:space:]]*$" "$ANSIBLE_DIR/$p"; then hit["$p"]=1; fi
+                done ;;
+              # Inventory, configuration, the wrapper, the caller: all of them.
+              *) all=1 ;;
+            esac
+          done <<< "${changed:-}"
+          selected=()
+          for p in "${playbooks[@]}"; do
+            if [ "$all" = 1 ] || [ -n "${hit[$p]:-}" ]; then selected+=("$p"); fi
+          done
+          if [ "${#selected[@]}" = 0 ]; then echo "No playbook is affected by this change."; else printf 'Runs: %s\n' "${selected[@]}"; fi
+          { echo "playbooks<<EOF"; [ "${#selected[@]}" = 0 ] || printf '%s\n' "${selected[@]}"; echo "EOF"; } >> "$GITHUB_OUTPUT"
+
   ansible:
+    needs: select
+    # Nothing affected: no run, and no approval asked for.
+    if: needs.select.outputs.playbooks != ''
     # Fork PRs never reach the self-hosted runners: their code would run inside
     # the network. On GitHub's runners they get no secrets and fail harmlessly.
     runs-on: ${{ (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository) && 'ubuntu-latest' || fromJSON(inputs.runs-on) }}
@@ -93,7 +157,7 @@ jobs:
       group: ansible-${{ github.repository }}
       cancel-in-progress: false
     env:
-      PLAYBOOKS: ${{ inputs.playbooks }}
+      PLAYBOOKS: ${{ needs.select.outputs.playbooks }}
       WRAPPER: ${{ inputs.wrapper }}
       SECRETS_FILE: ${{ inputs.secrets-file }}
       SSH_KEY_PATH: ${{ inputs.ssh-key-path }}
