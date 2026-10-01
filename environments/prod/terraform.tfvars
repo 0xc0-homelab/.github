@@ -33,14 +33,13 @@ repositories = {
   }
   # Vault's configuration as OpenTofu: auth methods, policies, secret engines.
   # Downstream of gitops, which deploys Vault. Its CI logs in to Vault with
-  # GitHub's OIDC token (JWT auth). "plan / tofu" becomes required once it has
-  # run once.
+  # GitHub's OIDC token (JWT auth).
   "vault" = {
     description            = "OpenTofu configuration of the cluster's Vault"
     topics                 = ["homelab", "opentofu", "vault"]
     auto_init              = true
     production_environment = true
-    required_checks        = ["issue / check"]
+    required_checks        = ["issue / check", "plan / tofu"]
   }
 }
 

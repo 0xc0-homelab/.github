@@ -30,7 +30,7 @@ jobs:
       # The self-hosted runners on the CI VMs, inside the network.
       runs-on: '{"group": "homelab", "labels": "homelab"}'
       # Every secret from Vault (ci/github/*, ci/shared/rustfs), with GitHub's
-      # OIDC token: this repo has no SOPS file.
+      # OIDC token.
       vault-addr: https://vault.int.0xc0.cc
       vault-role: github
       vault-secrets: |

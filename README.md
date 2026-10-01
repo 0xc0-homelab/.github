@@ -62,8 +62,8 @@ Every workflow with steps of its own lives here. A repo only holds thin
 callers: the triggers and paths, then `uses:` one of these, `@main`.
 
 ```yaml
-# tofu-plan and its sibling ask for id-token: the caller must grant it, even
-# when it does not use Vault.
+# Every reusable workflow asks for id-token: the job logs in to Vault with
+# GitHub's OIDC token.
 permissions:
   contents: read
   pull-requests: write
@@ -74,8 +74,11 @@ jobs:
     uses: 0xc0-homelab/.github/.github/workflows/tofu-plan.yml@main
     with:
       working-directory: environments/prod
-    secrets:
-      SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+      vault-addr: https://vault.int.0xc0.cc
+      vault-role: infrastructure
+      vault-secrets: |
+        ci/data/shared/rustfs access_key_id | AWS_ACCESS_KEY_ID ;
+        ci/data/shared/rustfs secret_access_key | AWS_SECRET_ACCESS_KEY ;
 ```
 
 No `runs-on` is needed: the job defaults to the self-hosted runners on
@@ -84,39 +87,17 @@ reusable workflows already, as they are on `main`, but only from the repos in
 `runner_group.repositories`, in `environments/prod/terraform.tfvars`: the
 caller's repo must be listed there.
 
-One secret per repo: **`SOPS_AGE_KEY`**, that repo's CI age key. Everything
-else a root needs — provider credentials, the RustFS state keys — lives in the
-repo's `secrets/tofu.sops.yaml`, encrypted to the operator and to that CI key.
-The workflows decrypt it with `sops exec-env` and mask every decrypted value in
-the logs. Override the path with the `secrets-file` input.
-
-A root whose provider talks to Vault passes `vault-addr` and `vault-role`. The
-job then logs in to Vault with its GitHub OIDC token (JWT auth, through
-`hashicorp/vault-action`) and runs with `VAULT_ADDR` and `VAULT_TOKEN` set. No
-Vault credential is stored: Vault's role checks the token's repository and ref.
-Today only `vault` does.
-
-**Secrets from Vault, instead of SOPS** (operator decision, 2026-10-01: every
-secret moves to Vault). Every reusable workflow that needs secrets (the tofu
-ones, `ansible` and `packer`) takes a `vault-secrets` input in
-`hashicorp/vault-action`'s format, one `<path> <key> | <ENV_VAR>;` per secret.
-Each lands in the job's environment, masked, under the name the code already
-reads:
-
-```yaml
-    with:
-      vault-addr: https://vault.int.0xc0.cc
-      vault-role: infrastructure
-      vault-secrets: |
-        ci/data/shared/rustfs access_key_id | AWS_ACCESS_KEY_ID ;
-        ci/data/shared/rustfs secret_access_key | AWS_SECRET_ACCESS_KEY ;
-```
-
-A caller that reads everything from Vault passes no `SOPS_AGE_KEY`, and the
-SOPS steps are skipped; one that still passes it keeps decrypting its
-`secrets-file`, so each repo moves on its own. `ansible` takes the CI SSH key
-from the variable `ssh-key-env` names. All of them now ask for
-`id-token: write`, which every caller must grant.
+**Secrets come from Vault, and no repo holds any** (operator decision,
+2026-10-01). The job logs in with its GitHub OIDC token (JWT auth, through
+`hashicorp/vault-action`), with the caller's `vault-addr` and `vault-role`.
+It then reads `vault-secrets`, in vault-action's format: one
+`<path> <key> | <ENV_VAR> ;` per secret. Each lands in the job's environment,
+masked, under the name the code reads, and `VAULT_ADDR` and `VAULT_TOKEN` are
+set for a root whose provider talks to Vault. No Vault credential and no
+Actions secret is stored: Vault's role checks the token's repository and the
+reusable workflow it runs (`job_workflow_ref`), and the policy names each path
+the repo may read. `ansible` writes the CI SSH key from the variable that
+`ssh-key-env` names.
 
 A repo whose applies run from CI needs `production_environment = true` in
 `environments/prod/terraform.tfvars`: that creates the approval-gated
@@ -131,9 +112,11 @@ cannot come from CI. The order matters:
    receive its initial push.
    `scripts/tofu prod apply -var bootstrap=true`
 2. **Push the existing history** of the five local repos to their new remotes.
-3. **Give the repo its CI key**: generate an age key, add its public half to
-   `.sops.yaml`, run `sops updatekeys`, and store the private half as the
-   `SOPS_AGE_KEY` Actions secret. Never write it to disk.
+3. **Its secrets come from Vault** (`ci/github/org-app`, `ci/shared/rustfs`),
+   read by `scripts/tofu` with the operator's token. With Vault down, restore
+   it first (`vault` repo, README); in the meantime the operator can export
+   the `TF_VAR_github_app_*` and `AWS_*` variables by hand, and `scripts/tofu`
+   reads only what is unset.
 4. **Second apply, rulesets active.** `scripts/tofu prod apply`
    From here on, every change goes through a PR and `org-apply`.
 
@@ -147,7 +130,8 @@ How its `main` gets its first commit decides the rest:
 - **Existing history, pushed from a local repo:** `bootstrap = true`. Only its
   ruleset is created disabled. Push the history, then a second PR removes the
   flag, and the ruleset turns active. Every other repo stays protected
-  throughout. Give it its CI key as in step 3 above if it runs OpenTofu.
+  throughout. If its CI needs secrets, it gets a `ci/<repo>/` path, a policy
+  and a JWT role in the `vault` repo.
 
 ## Concurrency
 
@@ -168,12 +152,12 @@ Several PRs can plan, and several merges can apply, against the same state.
 
 ## Secrets
 
-Committed, encrypted. The repos are public, so the ciphertext is public too;
-that is standard SOPS practice, and the answer to a leaked key is rotating the
-secrets it protects, which would be needed anyway. Each repo's CI key decrypts
-only that repo's files. The CI key is the repo's `SOPS_AGE_KEY` Actions secret;
-the workflows write it to `$RUNNER_TEMP`, which the runner wipes when the job
-ends.
+In Vault, never in a repo, not even encrypted. Each repo's CI reads only what
+its policy names, from the `ci/` engine: its own `ci/<repo>/*` and the
+`ci/shared/*` secrets it is granted by name. Rotation is the operator's, by
+hand in Vault. With the cluster or Vault down, the pipelines have no
+credentials until Vault is restored from PBS and unsealed: the accepted risk
+(`vault` repo, README).
 
 ## State
 
