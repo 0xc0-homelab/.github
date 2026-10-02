@@ -111,6 +111,13 @@ own `GITHUB_TOKEN`, only from `main`. Trunk-based, so every commit there is a
 deployable image, tagged `sha-<7>` and `main`; gitops pins the digest from the
 job's summary.
 
+GHCR creates every package private, and only the web UI can change that, so
+a new application takes one manual step. After the first push to `main`, the
+operator opens the package (github.com/orgs/0xc0-homelab/packages), goes to
+Package settings and picks Change visibility → Public. Only then does gitops
+pin its digest: until it is public the cluster cannot pull the image, and the
+route answers 503. Later images of the same package are public already.
+
 ```yaml
 on:
   pull_request:
