@@ -31,7 +31,9 @@ into the workspace repo at exactly the path GitHub reads.
   `--check --diff` on a PR, for real on a
   push once approved.
   `kustomize-validate` renders each Kustomize component of a GitOps repo as
-  Argo CD does, and validates it. `pr-issue` fails a PR that links
+  Argo CD does, and validates it. `node-check` lints, type-checks and builds
+  a Node app; `container-image` builds an app's image and, on `main`, pushes
+  it to GHCR (`sha-<7>` and `main`, never `latest`). `pr-issue` fails a PR that links
   no issue; `issue` runs it for this repo. A reusable workflow that needs the
   network is listed in the runner group's `workflows`.
 

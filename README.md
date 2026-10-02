@@ -21,6 +21,8 @@ mise.toml                  pinned tool versions
   hook-tests.yml           reusable: run a repo's hook test cases
   ansible.yml              reusable: the affected playbooks, in parallel; --check on a PR; for real, once approved
   kustomize-validate.yml   reusable: render each Kustomize component as Argo CD does, and validate it
+  node-check.yml           reusable: lint, type-check and build a Node app with its mise toolchain
+  container-image.yml      reusable: build an app's image; on main, push it to GHCR as sha-<7> and main
   org-plan.yml             this repo: plan environments/prod on every PR
   org-apply.yml            this repo: apply it after merge, once approved
   issue.yml                this repo: run pr-issue on every PR
@@ -102,6 +104,30 @@ the repo may read. `ansible` writes the CI SSH key from the variable that
 A repo whose applies run from CI needs `production_environment = true` in
 `environments/prod/terraform.tfvars`: that creates the approval-gated
 environment the apply workflow waits on.
+
+An application repo checks its code and builds its image on GitHub's runners,
+with no Vault and no secret: `container-image` pushes to GHCR with the job's
+own `GITHUB_TOKEN`, only from `main`. Trunk-based, so every commit there is a
+deployable image, tagged `sha-<7>` and `main`; gitops pins the digest from the
+job's summary.
+
+```yaml
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  check:
+    uses: 0xc0-homelab/.github/.github/workflows/node-check.yml@main
+  image:
+    needs: check
+    uses: 0xc0-homelab/.github/.github/workflows/container-image.yml@main
+```
 
 ## Bootstrap
 
