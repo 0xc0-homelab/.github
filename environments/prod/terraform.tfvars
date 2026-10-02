@@ -41,6 +41,13 @@ repositories = {
     production_environment = true
     required_checks        = ["issue / check", "plan / tofu"]
   }
+  # The offby1.cc landing page, a Next.js site on the offby1 design system.
+  "offby1.cc" = {
+    description     = "Landing page for offby1.cc"
+    topics          = ["homelab", "nextjs"]
+    auto_init       = true
+    required_checks = ["issue / check"]
+  }
 }
 
 # The CI VMs' runners. Only the repos that plan and apply infrastructure use
