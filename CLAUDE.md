@@ -46,6 +46,17 @@ with `-var bootstrap=true`, or `main` cannot take its first push.
 The org project board (Projects v2) is not supported by the GitHub provider,
 so it is created and configured by hand. It is an exception, not drift.
 
+GHCR packages are not either, nor the REST API. Both are set by hand, and
+neither is drift (#63):
+
+- The org's **Package creation** setting (Settings → Packages): Public is
+  enabled, so an application's image can be pulled by the cluster with no
+  secret (operator decision, 2026-10-02).
+- **Each package's visibility.** A package is always created private on its
+  first push. After an application's first push to `main`, the operator makes
+  it public from its Package settings, before gitops deploys it. A public
+  package cannot go private again.
+
 ## Visibility
 
 This repo is **public**, deliberately. The org profile README only shows from
