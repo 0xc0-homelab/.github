@@ -1,5 +1,5 @@
 provider "github" {
-  owner = "0xc0-homelab"
+  owner = "0xc0-labs"
 
   app_auth {
     id              = var.github_app_id
