@@ -72,7 +72,8 @@ readable by anyone. No secret value ever goes in here — only references.
   one PR, one intent.
 - `infrastructure` and `.github`: `main` only, PR required, apply behind manual
   approval.
-- `app-*`: test→prod promotion of the same digest.
+- Applications: a test environment only where the app needs one; then
+  test→prod promotes the same digest, never a rebuild.
 - No organization secret in cleartext in the code. Reference it, never the value.
 - The self-hosted runners live on the two CI VMs, `vm-ci-01` (10.10.1.10) and
   `vm-ci-02` (10.10.1.20), ephemeral, two on each. Do not register others.
