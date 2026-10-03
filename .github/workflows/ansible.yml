@@ -174,10 +174,10 @@ jobs:
         run: |
           ssh_key="$RUNNER_TEMP/ssh-key"
           ( umask 077 && printf '%s\n' "${!SSH_KEY_ENV}" > "$ssh_key" )
-          echo "HOMELAB_SSH_KEY_FILE=$ssh_key" >> "$GITHUB_ENV"
+          echo "SSH_KEY_FILE=$ssh_key" >> "$GITHUB_ENV"
           # Fresh host keys per job: a VM rebuilt at the same address gets a new
           # one, which a kept known_hosts would refuse.
-          echo "HOMELAB_KNOWN_HOSTS=$RUNNER_TEMP/known_hosts" >> "$GITHUB_ENV"
+          echo "KNOWN_HOSTS=$RUNNER_TEMP/known_hosts" >> "$GITHUB_ENV"
 
       - name: init
         if: inputs.tofu-root != ''
