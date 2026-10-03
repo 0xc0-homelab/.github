@@ -1,43 +1,43 @@
 operator_user_id = 94703619 # sergioaten
 
-# Topics: homelab on every repo, plus one per tool the repo actually contains.
+# Topics: 0xc0 on every repo, plus one per tool the repo actually contains.
 repositories = {
   ".github" = {
     description            = "Organization Terraform, reusable workflows and org-wide templates"
-    topics                 = ["homelab", "opentofu", "github-actions"]
+    topics                 = ["0xc0", "opentofu", "github-actions"]
     production_environment = true
     required_checks        = ["issue / check", "plan / tofu"]
   }
   "workspace" = {
     description = "Umbrella workspace: cross-repo rules, design and bootstrap"
-    topics      = ["homelab", "claude-code", "mise"]
+    topics      = ["0xc0", "claude-code", "mise"]
   }
   "claude-config" = {
     description     = "Claude Code marketplace and the homelab plugin"
-    topics          = ["homelab", "claude-code"]
+    topics          = ["0xc0", "claude-code"]
     required_checks = ["issue / check"]
   }
   "infrastructure" = {
-    description            = "Packer, OpenTofu and Ansible for the Proxmox homelab"
-    topics                 = ["homelab", "proxmox", "opentofu", "packer", "ansible"]
+    description            = "Packer, OpenTofu and Ansible for the Proxmox node"
+    topics                 = ["0xc0", "proxmox", "opentofu", "packer", "ansible"]
     production_environment = true
     required_checks        = ["issue / check", "plan / tofu"]
   }
   "gitops" = {
     description     = "ArgoCD manifests for the cluster"
-    topics          = ["argocd", "homelab"]
+    topics          = ["argocd", "0xc0"]
     required_checks = ["issue / check"]
   }
   "vault" = {
     description            = "OpenTofu configuration of the cluster's Vault"
-    topics                 = ["homelab", "opentofu", "vault"]
+    topics                 = ["0xc0", "opentofu", "vault"]
     auto_init              = true
     production_environment = true
     required_checks        = ["issue / check", "plan / tofu"]
   }
   "offby1.cc" = {
     description     = "Landing page for offby1.cc"
-    topics          = ["homelab", "nextjs"]
+    topics          = ["0xc0", "nextjs"]
     auto_init       = true
     required_checks = ["issue / check"]
   }
