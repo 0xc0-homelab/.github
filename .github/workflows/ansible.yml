@@ -1,9 +1,6 @@
-# Reusable: run a repo's Ansible playbooks, the ones the change affects, each
-# in a job of its own, in parallel. On a PR, each one with --check --diff, as
-# the review; on a push to main, for real, once the operator
-# approves the environment: that approval is the human launching the run.
-# The caller holds the triggers and paths, and provides the wrapper that runs
-# ansible-playbook with the repo's secrets in the environment.
+# Reusable: run the Ansible playbooks a change affects, one job each. A PR runs
+# --check --diff as the review; a push to main runs for real once the operator
+# approves the environment, which is the human launching the run.
 name: ansible
 
 on:
@@ -67,16 +64,14 @@ on:
         type: string
         required: true
 
-# id-token: the OIDC token a Vault login presents. The caller must grant it
-# too, even when it does not use Vault.
+# id-token: for the Vault login; the caller grants it even without Vault.
 permissions:
   contents: read
   id-token: write
 
 jobs:
-  # Only the playbooks the change affects: the playbook itself, or one naming a
-  # changed role. Anything else changed (inventory, configuration, the wrapper,
-  # the caller) runs them all. No secrets: GitHub's runners.
+  # A changed playbook, or one naming a changed role; any other change runs
+  # them all.
   select:
     runs-on: ubuntu-latest
     outputs:
@@ -95,8 +90,6 @@ jobs:
           PLAYBOOKS: ${{ inputs.playbooks }}
           ANSIBLE_DIR: ${{ inputs.ansible-dir }}
         run: |
-          # The changed files: against the PR's base, or since the push's
-          # previous head. Without one, every playbook runs.
           all=1
           if [ "$EVENT" = pull_request ]; then
             changed="$(git diff --name-only "origin/$BASE_REF...HEAD")"; all=0
@@ -113,14 +106,12 @@ jobs:
                 # A playbook outside the list runs nowhere here.
                 hit["${f#"$ANSIBLE_DIR"/}"]=1 ;;
               "$ANSIBLE_DIR"/roles/*/*)
-                # Every playbook naming the role, as a role or an include.
                 # Roles carry no meta dependencies; one that does would need
                 # its dependants found here too.
                 role="${f#"$ANSIBLE_DIR"/roles/}"; role="${role%%/*}"
                 for p in "${playbooks[@]}"; do
                   if grep -Eq "^[[:space:]-]*(role|name):[[:space:]]*[\"']?$role[\"']?[[:space:]]*$" "$ANSIBLE_DIR/$p"; then hit["$p"]=1; fi
                 done ;;
-              # Inventory, configuration, the wrapper, the caller: all of them.
               *) all=1 ;;
             esac
           done <<< "${changed:-}"
@@ -129,27 +120,22 @@ jobs:
             if [ "$all" = 1 ] || [ -n "${hit[$p]:-}" ]; then selected+=("$p"); fi
           done
           if [ "${#selected[@]}" = 0 ]; then echo "No playbook is affected by this change."; else printf 'Runs: %s\n' "${selected[@]}"; fi
-          # A JSON array, in the listed order: the matrix of the next job.
           echo "playbooks=$(printf '%s\n' "${selected[@]}" | jq -Rsc 'split("\n") | map(select(. != ""))')" >> "$GITHUB_OUTPUT"
 
   ansible:
     needs: select
-    # Nothing affected: no run, and no approval asked for.
     if: needs.select.outputs.playbooks != '[]'
-    # One job per playbook. A failure does not stop the others: each playbook
-    # holds its own hosts.
+    # Each playbook holds its own hosts, so a failure does not stop the others.
     strategy:
       fail-fast: false
       max-parallel: ${{ inputs.max-parallel }}
       matrix:
         playbook: ${{ fromJSON(needs.select.outputs.playbooks) }}
-    # Fork PRs never reach the self-hosted runners: their code would run inside
-    # the network. On GitHub's runners they get no secrets and fail harmlessly.
+    # Fork PRs run on GitHub's runners, with no secrets, never in the network.
     runs-on: ${{ (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository) && 'ubuntu-latest' || fromJSON(inputs.runs-on) }}
     # Only the real run waits for approval; the PR's dry run is the review.
     environment: ${{ github.event_name == 'push' && inputs.environment || '' }}
-    # One run at a time per playbook, dry or real: two touching the same VMs at
-    # once would race. A running one is never cancelled, or it leaves a VM
+    # Two runs on the same VMs would race; cancelling one leaves a VM
     # half-configured.
     concurrency:
       group: ansible-${{ github.repository }}-${{ matrix.playbook }}
@@ -170,9 +156,7 @@ jobs:
         with:
           install_args: ${{ inputs.tools }}
 
-      # Vault: log in with this job's GitHub OIDC token (JWT auth), and read
-      # vault-secrets into the job's environment, masked. No Vault credential is
-      # stored anywhere.
+      # JWT login with the job's OIDC token: no Vault credential is stored.
       - name: vault
         if: inputs.vault-addr != ''
         uses: hashicorp/vault-action@892a26828f195e65540a40b4768ae4571f51ebfc # v4.0.0
@@ -185,18 +169,14 @@ jobs:
           exportToken: true
           secrets: ${{ inputs.vault-secrets }}
 
-      # The SSH key, from Vault, to the job's temporary directory, which the
-      # runner wipes when the job ends: on a self-hosted runner, $HOME outlives
-      # the job.
+      # RUNNER_TEMP, not $HOME: on a self-hosted runner, $HOME outlives the job.
       - name: ssh
         run: |
           ssh_key="$RUNNER_TEMP/ssh-key"
           ( umask 077 && printf '%s\n' "${!SSH_KEY_ENV}" > "$ssh_key" )
           echo "HOMELAB_SSH_KEY_FILE=$ssh_key" >> "$GITHUB_ENV"
-          # Host keys, fresh for every job: a VM rebuilt under the same address
-          # gets a new one, and a known_hosts kept in the runner's $HOME would
-          # refuse it. The runners are ephemeral, so pinning across jobs buys
-          # nothing.
+          # Fresh host keys per job: a VM rebuilt at the same address gets a new
+          # one, which a kept known_hosts would refuse.
           echo "HOMELAB_KNOWN_HOSTS=$RUNNER_TEMP/known_hosts" >> "$GITHUB_ENV"
 
       - name: init

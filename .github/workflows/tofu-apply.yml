@@ -1,6 +1,5 @@
-# Reusable: apply an OpenTofu root inside a protected environment. The job does
-# not start until the operator approves it: that approval is the human
-# launching the apply.
+# Reusable: apply an OpenTofu root. The operator's approval of the environment
+# is the human launching the apply.
 name: tofu-apply
 
 on:
@@ -43,21 +42,15 @@ on:
 
 jobs:
   tofu:
-    # Fork PRs never reach the self-hosted runners: the runner group admits
-    # this workflow from main, and a fork could call it from a PR of its own.
-    # On GitHub's runners they get no secrets and fail harmlessly.
+    # A fork could call this from a PR of its own: GitHub's runners, no secrets.
     runs-on: ${{ (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository) && 'ubuntu-latest' || fromJSON(inputs.runs-on) }}
     environment: ${{ inputs.environment }}
-    # id-token: the OIDC token a Vault login presents. The caller must grant it
-    # too, even when it does not use Vault.
+    # id-token: for the Vault login; the caller grants it even without Vault.
     permissions:
       contents: read
       id-token: write
-    # Applies to the same root queue up, oldest first; a running apply is never
-    # cancelled. Only one run can wait in the queue: a third merge replaces the
-    # waiting one, which is safe because main is linear and the newer commit
-    # contains the older one. Every apply re-plans against the live state, so
-    # the second of two merges applies on top of the first.
+    # Never cancelled. A third merge replaces the waiting run: main is linear,
+    # and every apply re-plans against the live state.
     concurrency:
       group: tofu-apply-${{ github.repository }}-${{ inputs.working-directory }}
       cancel-in-progress: false
@@ -76,10 +69,7 @@ jobs:
         with:
           install_args: ${{ inputs.tools }}
 
-      # Vault: log in with this job's GitHub OIDC token (JWT auth). Vault checks
-      # the token's repository and ref against the role; no Vault credential is
-      # stored anywhere. VAULT_TOKEN lands in the job's environment, masked,
-      # and expires with the role's TTL.
+      # JWT login with the job's OIDC token: no Vault credential is stored.
       - name: vault
         if: inputs.vault-addr != ''
         uses: hashicorp/vault-action@892a26828f195e65540a40b4768ae4571f51ebfc # v4.0.0

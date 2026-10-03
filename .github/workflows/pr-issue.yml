@@ -1,6 +1,4 @@
-# Reusable: fails a PR whose body does not link an issue. No work in this org
-# happens without an issue on the project board, and this is where GitHub
-# enforces it. Needs no secrets, so every repo can call it.
+# Reusable: fail a PR whose body links no issue.
 name: pr-issue
 
 on:

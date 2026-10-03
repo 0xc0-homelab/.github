@@ -1,8 +1,5 @@
-# Reusable: render every Kustomize component of a GitOps repo exactly as Argo
-# CD does (kustomize build --enable-helm, charts inflated from their pinned
-# versions) and validate the result against the cluster's Kubernetes version.
-# Plain manifests alongside, such as the bootstrap's Applications, are
-# validated too. The caller holds the triggers and paths.
+# Reusable: render every Kustomize component exactly as Argo CD does, and
+# validate it against the cluster's Kubernetes version.
 name: kustomize-validate
 
 on:
@@ -29,7 +26,6 @@ permissions:
   contents: read
 
 jobs:
-  # Public charts and bases, no secrets: GitHub's runners, fork PRs included.
   validate:
     runs-on: ubuntu-latest
     env:
@@ -43,8 +39,7 @@ jobs:
         with:
           install_args: ${{ inputs.tools }}
 
-      # CRDs have no schema here, so their objects are skipped rather than
-      # failed; everything with a schema must be valid.
+      # CRDs have no schema here: their objects are skipped, not failed.
       - name: components
         run: |
           status=0

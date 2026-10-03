@@ -1,6 +1,3 @@
-# Every repo in the org is created through this module, so the org-wide rules
-# live here once: squash only, main only, PR required, linear history.
-
 resource "github_repository" "main" {
   name         = var.name
   description  = var.description
@@ -10,7 +7,6 @@ resource "github_repository" "main" {
   has_projects = true
   has_wiki     = false
 
-  # PRs are squash merged and the PR title becomes the commit on main.
   allow_squash_merge          = true
   allow_merge_commit          = false
   allow_rebase_merge          = false
@@ -18,11 +14,8 @@ resource "github_repository" "main" {
   squash_merge_commit_message = "PR_BODY"
   delete_branch_on_merge      = true
 
-  # A repo with existing history gets it pushed, and starts empty. A brand-new
-  # one can start with an initial commit instead, and needs no bootstrap.
   auto_init = var.auto_init
 
-  # A destroy archives instead of deleting: the repo stays recoverable.
   archive_on_destroy = true
 
   dynamic "security_and_analysis" {
@@ -87,8 +80,7 @@ resource "github_repository_ruleset" "main" {
   }
 }
 
-# Applies from CI run in this environment and wait for a reviewer's approval.
-# That approval is the human launching the apply. Opt-in per repo.
+# The reviewer's approval is the human launching the apply.
 resource "github_repository_environment" "main" {
   count = length(var.production_environment_reviewers) > 0 ? 1 : 0
 

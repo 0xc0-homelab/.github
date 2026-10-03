@@ -1,9 +1,6 @@
-# Applies environments/prod after a merge to main, once the operator approves the
-# production environment.
 name: org-apply
 
-# Only when OpenTofu could change something: a merge that touches no root,
-# module or tool version asks for no approval. Run it by hand otherwise.
+# Only when OpenTofu could change something; run it by hand otherwise.
 on:
   push:
     branches: [main]
@@ -22,15 +19,11 @@ permissions:
 
 jobs:
   apply:
-    # From main, like every caller: the runner group only admits the reusable
-    # workflows as they are on main.
+    # @main: the runner group only admits the reusable workflows as on main.
     uses: 0xc0-labs/.github/.github/workflows/tofu-apply.yml@main
     with:
       working-directory: environments/prod
-      # The self-hosted runners on the CI VMs, inside the network.
       runs-on: '{"group": "homelab", "labels": "homelab"}'
-      # Every secret from Vault (ci/github/*, ci/shared/rustfs), with GitHub's
-      # OIDC token.
       vault-addr: https://vault.int.0xc0.cc
       vault-role: github
       vault-secrets: |

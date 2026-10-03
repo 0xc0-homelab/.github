@@ -1,9 +1,6 @@
 # Reusable: fmt, validate and plan an OpenTofu root, and post the plan on the PR.
-# Called by this repo and by any other repo in the org.
-#
-# The job runs on every PR, so its check always reports and can be required.
-# When a PR touches nothing matching `paths`, it finishes green right away,
-# without init and without reaching the state backend.
+# It runs on every PR so its check can be required; with no file matching
+# `paths`, it finishes green without init.
 name: tofu-plan
 
 on:
@@ -47,26 +44,22 @@ on:
 
 jobs:
   tofu:
-    # Fork PRs never reach the self-hosted runners: their code would run inside
-    # the network. On GitHub's runners they get no secrets and fail harmlessly.
+    # Fork PRs run on GitHub's runners, with no secrets, never in the network.
     runs-on: ${{ (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository) && 'ubuntu-latest' || fromJSON(inputs.runs-on) }}
-    # id-token: the OIDC token a Vault login presents. The caller must grant it
-    # too, even when it does not use Vault.
+    # id-token: for the Vault login; the caller grants it even without Vault.
     permissions:
       contents: read
       pull-requests: write
       id-token: write
-    # One plan at a time per PR and root. A newer push replaces a plan that has
-    # not started yet. A running plan is never cancelled: killing tofu mid-run
-    # can leave the state lock behind.
+    # A running plan is never cancelled: killing tofu mid-run can leave the
+    # state lock behind.
     concurrency:
       group: tofu-plan-${{ github.repository }}-${{ github.event.pull_request.number || github.ref }}-${{ inputs.working-directory }}
       cancel-in-progress: false
     env:
       TF_IN_AUTOMATION: "true"
       TF_INPUT: "false"
-      # Wait for the state lock instead of failing: an apply or another PR's
-      # plan may hold it for a moment.
+      # An apply or another PR's plan may hold the lock for a moment.
       TF_CLI_ARGS_plan: "-lock-timeout=5m"
       ROOT: ${{ inputs.working-directory }}
       VAULT_ADDR: ${{ inputs.vault-addr }}
@@ -94,16 +87,12 @@ jobs:
             echo "No file matches '$PATHS'. Plan skipped."
           fi
 
-      # Tool versions come from mise.toml, same as on the laptop.
       - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
         if: steps.changes.outputs.tofu == 'true'
         with:
           install_args: ${{ inputs.tools }}
 
-      # Vault: log in with this job's GitHub OIDC token (JWT auth). Vault checks
-      # the token's repository and ref against the role; no Vault credential is
-      # stored anywhere. VAULT_TOKEN lands in the job's environment, masked,
-      # and expires with the role's TTL.
+      # JWT login with the job's OIDC token: no Vault credential is stored.
       - name: vault
         if: steps.changes.outputs.tofu == 'true' && inputs.vault-addr != ''
         uses: hashicorp/vault-action@892a26828f195e65540a40b4768ae4571f51ebfc # v4.0.0
