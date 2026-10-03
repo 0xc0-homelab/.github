@@ -97,11 +97,11 @@ is a finding, not a curiosity.
 A new repo is created **from here**, with Terraform, not from the web UI. See
 `README.md`, section Adding a repo.
 
-The module creates no files in the repo. The `homelab` Claude Code plugin is
+The module creates no files in the repo. The `0xc0` Claude Code plugin is
 installed per machine, from the workspace:
 
 ```
-claude plugin install homelab@0xc0-labs --scope project
+claude plugin install 0xc0@0xc0-labs --scope project
 ```
 
 Enabling it in settings does not install it.
