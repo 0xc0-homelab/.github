@@ -1,6 +1,5 @@
 # Reusable: run a repo's hook test cases. A guardrail that silently stops
-# blocking is worse than none, so the caller runs this on every PR that touches
-# its hooks.
+# blocking is worse than none.
 name: hook-tests
 
 on:
@@ -15,7 +14,6 @@ permissions:
   contents: read
 
 jobs:
-  # No secrets, no network: GitHub's runners, fork PRs included.
   test:
     runs-on: ubuntu-latest
     steps:

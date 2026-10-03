@@ -1,6 +1,4 @@
-# Reusable: lint, type-check and build a Node app with the toolchain its own
-# mise.toml pins (node, pnpm), on every PR and push the caller sends here.
-# The caller holds the triggers and paths.
+# Reusable: lint, type-check and build a Node app with its own mise toolchain.
 name: node-check
 
 on:
@@ -15,7 +13,6 @@ permissions:
   contents: read
 
 jobs:
-  # Public code, no secrets: GitHub's runners, fork PRs included.
   check:
     runs-on: ubuntu-latest
     defaults:

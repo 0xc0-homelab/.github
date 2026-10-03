@@ -1,12 +1,8 @@
-# Reusable: validate a repo's Packer templates on a PR, and rebuild the ones a
-# push to main affects once the operator approves the environment: a template
-# whose directory or baked role changed, and every template cloning one rebuilt.
-# A rebuild deletes each template by name and builds it again, in the
-# build-order file. VMs are
+# Reusable: validate Packer templates on a PR; on a push to main, once
+# approved, rebuild the affected ones and every template cloning them. VMs are
 # full clones: none changes until it is rebuilt with its `rebuild` counter.
-#
-# The caller holds the triggers and paths, and provides the two scripts the
-# build runs: scripts/delete-template <name> and scripts/packer <name> <args>.
+# The caller provides scripts/delete-template <name> and
+# scripts/packer <name> <args>.
 name: packer
 
 on:
@@ -55,22 +51,18 @@ on:
         type: string
         default: ""
 
-# id-token: the OIDC token a Vault login presents. The caller must grant it
-# too, even when it does not use Vault.
+# id-token: for the Vault login; the caller grants it even without Vault.
 permissions:
   contents: read
   id-token: write
 
 jobs:
-  # No secrets and no network beyond the plugin downloads: GitHub's runners,
-  # fork PRs included.
   validate:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     env:
       TEMPLATES_DIR: ${{ inputs.templates-dir }}
-      # packer init looks plugins up through the GitHub API: unauthenticated, a
-      # shared runner hits the rate limit and the job fails for nothing.
+      # packer init uses the GitHub API: unauthenticated, it is rate limited.
       PACKER_GITHUB_API_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -92,9 +84,7 @@ jobs:
             packer validate "$t"
           done
 
-  # The templates the push affects. Anything changed outside a template's
-  # directory and the roles (the build order, the scripts, the caller, the
-  # tools) rebuilds them all. No secrets: GitHub's runners.
+  # A change outside a template's directory and the roles rebuilds them all.
   select:
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
@@ -114,8 +104,6 @@ jobs:
           ROLES_DIR: ${{ inputs.roles-dir }}
           BUILD_ORDER: ${{ inputs.build-order }}
         run: |
-          # The changed files since the push's previous head. Without one, or
-          # run by hand, every template is rebuilt.
           all=1
           if [ "$EVENT" = push ] && [ -n "$BEFORE" ] && [ "${BEFORE//0/}" != "" ] && git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
             changed="$(git diff --name-only "$BEFORE" "$GITHUB_SHA")"; all=0
@@ -129,19 +117,15 @@ jobs:
               "$TEMPLATES_DIR"/*/*)
                 t="${f#"$TEMPLATES_DIR"/}"; hit["${t%%/*}"]=1 ;;
               "$ROLES_DIR"/*/*)
-                # Every template whose playbook bakes the role.
                 role="${f#"$ROLES_DIR"/}"; role="${role%%/*}"
                 for t in "${order[@]}"; do
                   if grep -Eq "^[[:space:]-]*(role|name):[[:space:]]*[\"']?$role[\"']?[[:space:]]*$" "$TEMPLATES_DIR/$t/playbook.yml"; then hit["$t"]=1; fi
                 done ;;
-              # The build order, the scripts, the caller, the tools: all of them.
               *) all=1 ;;
             esac
           done <<< "${changed:-}"
-          # A template cloning a rebuilt one is rebuilt after it: the build
-          # order lists each after the one it clones, so one pass is enough.
-          # Its chain is its root's: the template that clones nothing in the
-          # build order.
+          # The build order lists each template after the one it clones, so one
+          # pass finds every clone of a rebuilt template, and its chain's root.
           declare -A root=() chain=()
           roots=()
           for t in "${order[@]}"; do
@@ -155,7 +139,6 @@ jobs:
             fi
           done
           if [ "${#roots[@]}" = 0 ]; then echo "No template is affected by this change."; fi
-          # A JSON array, one chain per entry: the matrix of the build.
           json='[]'
           for r in "${roots[@]}"; do
             echo "Rebuilds, in order: ${chain[$r]}"
@@ -163,13 +146,8 @@ jobs:
           done
           echo "chains=$json" >> "$GITHUB_OUTPUT"
 
-  # Inside the network. The runner group admits this workflow only as it is on
-  # main, and only a push runs it: a fork's PR never reaches this job. Nothing
-  # affected: no build, and no approval asked for.
-  #
-  # One job per chain, in parallel: each chain's templates clone one another,
-  # in order, inside its job. Every chain needs a build address of its own (the
-  # templates' build_ip), or two builds at once would take the same one.
+  # Only a push runs it, so a fork's PR never reaches the network. Chains run
+  # in parallel: each needs its own build address (build_ip).
   build:
     needs: select
     if: github.event_name == 'push' && needs.select.outputs.chains != '[]'
@@ -181,16 +159,14 @@ jobs:
     runs-on: ${{ fromJSON(inputs.runs-on) }}
     environment: ${{ inputs.environment }}
     timeout-minutes: 60
-    # One build at a time per chain, which holds its build address; a running
-    # one is never cancelled, or it leaves a half-built VM behind.
+    # Cancelling a build leaves a half-built VM behind.
     concurrency:
       group: packer-${{ github.repository }}-${{ matrix.chain.root }}
       cancel-in-progress: false
     env:
       TEMPLATES: ${{ matrix.chain.templates }}
       VAULT_ADDR: ${{ inputs.vault-addr }}
-      # packer init looks plugins up through the GitHub API: unauthenticated, a
-      # shared runner hits the rate limit and the job fails for nothing.
+      # packer init uses the GitHub API: unauthenticated, it is rate limited.
       PACKER_GITHUB_API_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -199,8 +175,7 @@ jobs:
         with:
           install_args: ${{ inputs.tools }}
 
-      # Vault: log in with this job's GitHub OIDC token, and read vault-secrets
-      # into the job's environment, masked.
+      # JWT login with the job's OIDC token: no Vault credential is stored.
       - name: vault
         if: inputs.vault-addr != ''
         uses: hashicorp/vault-action@892a26828f195e65540a40b4768ae4571f51ebfc # v4.0.0
@@ -213,19 +188,16 @@ jobs:
           exportToken: true
           secrets: ${{ inputs.vault-secrets }}
 
-      # The token's secret half is masked on its own: the whole token is, but
-      # scripts/packer passes only that half to Packer.
+      # scripts/packer passes only the token's secret half, so mask it alone.
       - name: mask
         if: inputs.vault-addr != ''
         run: |
           if [ -n "${PROXMOX_VE_API_TOKEN:-}" ]; then echo "::add-mask::${PROXMOX_VE_API_TOKEN#*=}"; fi
 
-      # Each template clones the one before it in the build order. Proxmox never
-      # overwrites a template: the old one is deleted by name first.
+      # Proxmox never overwrites a template: the old one is deleted first.
       - name: build
         run: |
-          # A for loop, not while-read: a command in the loop reading stdin
-          # would eat the rest of the list.
+          # Not while-read: a command reading stdin would eat the list.
           for name in $TEMPLATES; do
             echo "::group::$name"
             scripts/delete-template "$name"

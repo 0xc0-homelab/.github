@@ -28,14 +28,13 @@ into the workspace repo at exactly the path GitHub reads.
   push affects, one job per chain of clones, in parallel.
   `hook-tests` runs a repo's hook test cases. `ansible` runs a repo's
   playbooks the change affects, each in its own job, in parallel: with
-  `--check --diff` on a PR, for real on a
-  push once approved.
+  `--check --diff` on a PR, for real on a push once approved.
   `kustomize-validate` renders each Kustomize component of a GitOps repo as
   Argo CD does, and validates it. `node-check` lints, type-checks and builds
   a Node app; `container-image` builds an app's image and, on `main`, pushes
-  it to GHCR (`sha-<7>` and `main`, never `latest`). `pr-issue` fails a PR that links
-  no issue; `issue` runs it for this repo. A reusable workflow that needs the
-  network is listed in the runner group's `workflows`.
+  it to GHCR (`sha-<7>` and `main`, never `latest`). `pr-issue` fails a PR
+  that links no issue; `issue` runs it for this repo. A reusable workflow that
+  needs the network is listed in the runner group's `workflows`.
 
 Layout and naming conventions are in `README.md`, section Conventions. The
 bootstrap order is there too. Do not improvise it: the org's first apply runs
@@ -47,7 +46,7 @@ The org project board (Projects v2) is not supported by the GitHub provider,
 so it is created and configured by hand. It is an exception, not drift.
 
 GHCR packages are not either, nor the REST API. Both are set by hand, and
-neither is drift (#63):
+neither is drift:
 
 - The org's **Package creation** setting (Settings → Packages): Public is
   enabled, so an application's image can be pulled by the cluster with no
@@ -73,7 +72,8 @@ readable by anyone. No secret value ever goes in here — only references.
   one PR, one intent.
 - `infrastructure` and `.github`: `main` only, PR required, apply behind manual
   approval.
-- `app-*`: test→prod promotion of the same digest.
+- Applications: a test environment only where the app needs one; then
+  test→prod promotes the same digest, never a rebuild.
 - No organization secret in cleartext in the code. Reference it, never the value.
 - The self-hosted runners live on the two CI VMs, `vm-ci-01` (10.10.1.10) and
   `vm-ci-02` (10.10.1.20), ephemeral, two on each. Do not register others.
@@ -88,9 +88,9 @@ readable by anyone. No secret value ever goes in here — only references.
 
 ## Before opening a PR
 
-Run `scripts/tofu prod plan` and read it line by line. A repo or a permission that exists on
-GitHub but not in Terraform shows up here as a diff, and that is a finding, not
-a curiosity.
+Run `scripts/tofu prod plan` and read it line by line. A repo or a permission
+that exists on GitHub but not in Terraform shows up here as a diff, and that
+is a finding, not a curiosity.
 
 ## Bootstrapping new repos
 

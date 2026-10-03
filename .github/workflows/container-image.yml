@@ -1,10 +1,6 @@
-# Reusable: build a repo's container image and, on its default branch, push it
-# to GHCR as ghcr.io/<owner>/<repo>. Trunk-based: every commit on main is an
-# immutable, deployable image, tagged sha-<7> and main; there is no latest and
-# no release tag. Deployments pin the digest this job writes to its summary.
-# On a PR the image is built and not pushed, which checks the Dockerfile.
-# GHCR takes the job's GITHUB_TOKEN: the caller grants packages: write, and
-# no secret is involved.
+# Reusable: build a repo's image; on main, push it to GHCR. Trunk-based: every
+# commit on main is a deployable image, tagged sha-<7> and main, never latest.
+# GHCR takes the job's GITHUB_TOKEN; no secret is involved.
 name: container-image
 
 on:
