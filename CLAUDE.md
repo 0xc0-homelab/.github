@@ -1,6 +1,6 @@
 # .github — organization Terraform
 
-Manages the `0xc0-homelab` org with Terraform/OpenTofu, plus the reusable
+Manages the `0xc0-labs` org with Terraform/OpenTofu, plus the reusable
 workflows.
 
 Cloned locally as `.github/`, matching the repo name.
@@ -101,7 +101,7 @@ The module creates no files in the repo. The `homelab` Claude Code plugin is
 installed per machine, from the workspace:
 
 ```
-claude plugin install homelab@0xc0-homelab --scope project
+claude plugin install homelab@0xc0-labs --scope project
 ```
 
 Enabling it in settings does not install it.

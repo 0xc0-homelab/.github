@@ -24,7 +24,7 @@ jobs:
   apply:
     # From main, like every caller: the runner group only admits the reusable
     # workflows as they are on main.
-    uses: 0xc0-homelab/.github/.github/workflows/tofu-apply.yml@main
+    uses: 0xc0-labs/.github/.github/workflows/tofu-apply.yml@main
     with:
       working-directory: environments/prod
       # The self-hosted runners on the CI VMs, inside the network.

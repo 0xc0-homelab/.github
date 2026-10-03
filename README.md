@@ -1,6 +1,6 @@
 # .github
 
-Organization Terraform for `0xc0-homelab`, and the reusable workflows every
+Organization Terraform for `0xc0-labs`, and the reusable workflows every
 repo calls.
 
 What the homelab itself is lives in [`profile/README.md`](profile/README.md),
@@ -73,7 +73,7 @@ permissions:
 
 jobs:
   plan:
-    uses: 0xc0-homelab/.github/.github/workflows/tofu-plan.yml@main
+    uses: 0xc0-labs/.github/.github/workflows/tofu-plan.yml@main
     with:
       working-directory: environments/prod
       vault-addr: https://vault.int.0xc0.cc
@@ -113,7 +113,7 @@ job's summary.
 
 GHCR creates every package private, and only the web UI can change that, so
 a new application takes one manual step. After the first push to `main`, the
-operator opens the package (github.com/orgs/0xc0-homelab/packages), goes to
+operator opens the package (github.com/orgs/0xc0-labs/packages), goes to
 Package settings and picks Change visibility → Public. Only then does gitops
 pin its digest: until it is public the cluster cannot pull the image, and the
 route answers 503. Later images of the same package are public already.
@@ -130,10 +130,10 @@ permissions:
 
 jobs:
   check:
-    uses: 0xc0-homelab/.github/.github/workflows/node-check.yml@main
+    uses: 0xc0-labs/.github/.github/workflows/node-check.yml@main
   image:
     needs: check
-    uses: 0xc0-homelab/.github/.github/workflows/container-image.yml@main
+    uses: 0xc0-labs/.github/.github/workflows/container-image.yml@main
 ```
 
 ## Bootstrap

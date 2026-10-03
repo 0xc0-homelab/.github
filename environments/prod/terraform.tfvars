@@ -57,9 +57,9 @@ runner_group = {
   repositories = [".github", "infrastructure", "vault"]
   # The reusable workflows that need the network, as they are on main.
   workflows = [
-    "0xc0-homelab/.github/.github/workflows/ansible.yml@refs/heads/main",
-    "0xc0-homelab/.github/.github/workflows/packer.yml@refs/heads/main",
-    "0xc0-homelab/.github/.github/workflows/tofu-plan.yml@refs/heads/main",
-    "0xc0-homelab/.github/.github/workflows/tofu-apply.yml@refs/heads/main",
+    "0xc0-labs/.github/.github/workflows/ansible.yml@refs/heads/main",
+    "0xc0-labs/.github/.github/workflows/packer.yml@refs/heads/main",
+    "0xc0-labs/.github/.github/workflows/tofu-plan.yml@refs/heads/main",
+    "0xc0-labs/.github/.github/workflows/tofu-apply.yml@refs/heads/main",
   ]
 }
