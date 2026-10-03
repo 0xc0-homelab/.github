@@ -3,15 +3,15 @@
 Organization Terraform for `0xc0-labs`, and the reusable workflows every
 repo calls.
 
-What the homelab itself is lives in [`profile/README.md`](profile/README.md),
+What the org runs, and how, is in [`profile/README.md`](profile/README.md),
 which GitHub shows on the organization page.
 
 ```
-profile/README.md          the org page: what the project is, current phase
+profile/README.md          the org page: what the project is
 modules/repository/        every repo is created through this module
 modules/runner-group/      the runner group for the self-hosted runners on the CI VMs
 environments/prod/         root: calls the modules
-scripts/tofu               runs tofu on an environment, secrets decrypted in env
+scripts/tofu               runs tofu on an environment, secrets read from Vault into env
 mise.toml                  pinned tool versions
 .github/workflows/
   tofu-plan.yml            reusable: fmt, validate, plan, comment on the PR
@@ -50,8 +50,9 @@ environments/<env>/        root: backend.tf, main.tf, terraform.tfvars
 
 ## Running it locally
 
-Tools come from `mise.toml`. Secrets never touch disk in plaintext:
-`scripts/tofu` decrypts them into the environment for one command.
+Tools come from `mise.toml`. Secrets never touch disk: `scripts/tofu` reads
+them from Vault into the environment for one command, over WARP, logged in
+with `vault login -no-print`.
 
 ```
 scripts/tofu prod init

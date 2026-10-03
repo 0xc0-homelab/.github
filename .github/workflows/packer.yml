@@ -1,9 +1,9 @@
 # Reusable: validate a repo's Packer templates on a PR, and rebuild the ones a
 # push to main affects once the operator approves the environment: a template
 # whose directory or baked role changed, and every template cloning one rebuilt.
-# A rebuild deletes each template by name and builds it again, in the
-# build-order file. VMs are
-# full clones: none changes until it is rebuilt with its `rebuild` counter.
+# A rebuild deletes each template by name and builds it again, in the order of
+# the build-order file. VMs are full clones: none changes until it is rebuilt
+# with its `rebuild` counter.
 #
 # The caller holds the triggers and paths, and provides the two scripts the
 # build runs: scripts/delete-template <name> and scripts/packer <name> <args>.
