@@ -8,7 +8,7 @@ on:
       command:
         description: The test runner to execute, relative to the repo root. It exits non-zero on any failing case.
         type: string
-        default: plugins/homelab/hooks/tests/run.sh
+        default: plugins/0xc0/hooks/tests/run.sh
 
 permissions:
   contents: read

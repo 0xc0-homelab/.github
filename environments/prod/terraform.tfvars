@@ -13,7 +13,7 @@ repositories = {
     topics      = ["0xc0", "claude-code", "mise"]
   }
   "claude-config" = {
-    description     = "Claude Code marketplace and the homelab plugin"
+    description     = "Claude Code marketplace and the 0xc0 plugin"
     topics          = ["0xc0", "claude-code"]
     required_checks = ["issue / check"]
   }
