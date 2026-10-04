@@ -33,7 +33,7 @@ on:
           Where the build runs, as JSON. Defaults to the self-hosted runners on
           the CI VMs: the build VM is reached over SSH inside the network.
         type: string
-        default: '{"group": "homelab", "labels": "homelab"}'
+        default: '{"group": "0xc0", "labels": "0xc0"}'
       vault-addr:
         description: Vault's address. Empty, the job does not log in to Vault.
         type: string

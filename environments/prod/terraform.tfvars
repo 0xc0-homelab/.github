@@ -45,7 +45,7 @@ repositories = {
 
 # Only the repos whose CI needs the network.
 runner_group = {
-  name         = "homelab"
+  name         = "0xc0"
   repositories = [".github", "infrastructure", "vault"]
   workflows = [
     "0xc0-labs/.github/.github/workflows/ansible.yml@refs/heads/main",

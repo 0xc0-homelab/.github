@@ -24,7 +24,7 @@ on:
           the CI VMs, inside the network. A PR from a fork always runs on
           "ubuntu-latest", never on the self-hosted ones.
         type: string
-        default: '{"group": "homelab", "labels": "homelab"}'
+        default: '{"group": "0xc0", "labels": "0xc0"}'
       vault-addr:
         description: Vault's address, for a root whose provider talks to Vault. Empty, the job does not log in to Vault.
         type: string
