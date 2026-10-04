@@ -23,7 +23,7 @@ jobs:
     uses: 0xc0-labs/.github/.github/workflows/tofu-apply.yml@main
     with:
       working-directory: environments/prod
-      runs-on: '{"group": "homelab", "labels": "homelab"}'
+      runs-on: '{"group": "0xc0", "labels": "0xc0"}'
       vault-addr: https://vault.int.0xc0.cc
       vault-role: github
       vault-secrets: |
