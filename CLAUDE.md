@@ -19,7 +19,7 @@ into the workspace repo at exactly the path GitHub reads.
 - `environments/prod/` — the root. Calls the repository module once per repo
   and the runner-group module once. The `production` Actions environment every
   apply waits on lives in the repository module, opted into per repo
-  (`production_environment`). State key `homelab/.github/prod.tfstate`.
+  (`production_environment`). State key `0xc0/.github/prod.tfstate`.
 - `.github/workflows/` — **every workflow with steps of its own lives here, as
   a reusable one**; the other repos only hold thin callers with their triggers
   and paths (operator decision, 2026-09-29). `tofu-plan` and `tofu-apply` plan

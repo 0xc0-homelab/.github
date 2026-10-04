@@ -40,8 +40,8 @@ environments/<env>/        root: backend.tf, main.tf, terraform.tfvars
 
 - A root only calls modules. A resource sits in a root only when it belongs to
   no reusable concept.
-- State key: `homelab/<repo>/<environment>.tfstate`. Here,
-  `homelab/.github/prod.tfstate`.
+- State key: `0xc0/<repo>/<environment>.tfstate`. Here,
+  `0xc0/.github/prod.tfstate`.
 - A resource that is the only one of its type is named `main`.
 - Root values go in `terraform.tfvars`. Secrets come from the environment.
   `bootstrap` is the one exception: command line only, never committed.
